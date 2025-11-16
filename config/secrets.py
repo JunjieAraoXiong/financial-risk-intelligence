@@ -20,16 +20,18 @@ class Config:
         self.ag_pass = os.getenv('AG_PASS')
         self.ag_repo = os.getenv('AG_REPO', 'feekg_dev')
 
-        # Validate required variables
-        if not all([self.ag_url, self.ag_user, self.ag_pass]):
+        # Validate required variables (skip in production/Railway)
+        # Railway sets env vars directly, no .env file needed
+        is_production = os.getenv('FLASK_ENV') == 'production' or os.getenv('RAILWAY_ENVIRONMENT')
+        if not is_production and not all([self.ag_url, self.ag_user, self.ag_pass]):
             raise ValueError(
                 "Missing required environment variables. "
                 "Please check .env file contains AG_URL, AG_USER, AG_PASS"
             )
 
-        # Parse URL components
-        self.ag_host = self._parse_host(self.ag_url)
-        self.ag_port = self._parse_port(self.ag_url)
+        # Parse URL components (if URL is provided)
+        self.ag_host = self._parse_host(self.ag_url) if self.ag_url else None
+        self.ag_port = self._parse_port(self.ag_url) if self.ag_url else None
 
     def _parse_host(self, url):
         """Extract host from URL"""
