@@ -509,9 +509,322 @@
             text-align: center;
             margin: 10px 0;
         }
+
+        /* ===================================================================
+           MARKDOWN VIEWER MODAL STYLES
+           =================================================================== */
+
+        /* Modal overlay */
+        .md-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10000;
+            overflow-y: auto;
+            animation: fadeIn 0.2s ease-in;
+        }
+
+        .md-modal-overlay.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Modal container */
+        .md-modal {
+            max-width: 1200px;
+            margin: 40px auto;
+            background: #1a1a1a;
+            border: 2px solid #888;
+            border-radius: 8px;
+            padding: 0;
+            position: relative;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Modal header */
+        .md-modal-header {
+            background: #0a0a0a;
+            border-bottom: 2px solid #555;
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .md-modal-title {
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .md-modal-title::before {
+            content: "$ cat ";
+            color: #999;
+            margin-right: 5px;
+        }
+
+        .md-modal-close {
+            background: #fff;
+            color: #0a0a0a;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: monospace;
+        }
+
+        .md-modal-close:hover {
+            background: #ddd;
+            transform: scale(1.1);
+        }
+
+        /* Modal content */
+        .md-modal-content {
+            padding: 40px;
+            color: #e0e0e0;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        /* Markdown content styling */
+        .md-content h1 {
+            color: #fff;
+            font-size: 28px;
+            font-weight: 700;
+            margin: 30px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #555;
+        }
+
+        .md-content h1:first-child {
+            margin-top: 0;
+        }
+
+        .md-content h2 {
+            color: #fff;
+            font-size: 22px;
+            font-weight: 700;
+            margin: 25px 0 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #555;
+        }
+
+        .md-content h3 {
+            color: #fff;
+            font-size: 18px;
+            font-weight: 700;
+            margin: 20px 0 12px 0;
+        }
+
+        .md-content h4 {
+            color: #ddd;
+            font-size: 16px;
+            font-weight: 700;
+            margin: 18px 0 10px 0;
+        }
+
+        .md-content h5, .md-content h6 {
+            color: #ccc;
+            font-size: 14px;
+            font-weight: 700;
+            margin: 15px 0 8px 0;
+        }
+
+        .md-content p {
+            margin: 12px 0;
+            color: #e0e0e0;
+        }
+
+        .md-content a {
+            color: #88c0d0;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .md-content a:hover {
+            color: #b48ead;
+            border-bottom-color: #b48ead;
+        }
+
+        .md-content ul, .md-content ol {
+            margin: 12px 0;
+            padding-left: 30px;
+        }
+
+        .md-content li {
+            margin: 6px 0;
+        }
+
+        .md-content code {
+            background: #0a0a0a;
+            color: #a3be8c;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+
+        .md-content pre {
+            background: #0a0a0a;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 15px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .md-content pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+            color: #e0e0e0;
+            font-size: 12px;
+        }
+
+        .md-content blockquote {
+            border-left: 4px solid #888;
+            padding-left: 20px;
+            margin: 15px 0;
+            color: #bbb;
+            font-style: italic;
+        }
+
+        .md-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            font-size: 12px;
+        }
+
+        .md-content table th {
+            background: #0a0a0a;
+            color: #fff;
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #555;
+            font-weight: 700;
+        }
+
+        .md-content table td {
+            padding: 10px;
+            border: 1px solid #555;
+            color: #e0e0e0;
+        }
+
+        .md-content table tr:nth-child(even) {
+            background: #151515;
+        }
+
+        .md-content hr {
+            border: none;
+            border-top: 1px solid #555;
+            margin: 25px 0;
+        }
+
+        .md-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin: 15px 0;
+            border: 1px solid #555;
+        }
+
+        /* Loading state */
+        .md-loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .md-loading::after {
+            content: "...";
+            animation: blink 1s infinite;
+        }
+
+        /* Error state */
+        .md-error {
+            background: #3b1f1f;
+            border: 1px solid #8b4040;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #ff6b6b;
+        }
+
+        /* Scroll styling for modal */
+        .md-modal-content::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .md-modal-content::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        .md-modal-content::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 5px;
+        }
+
+        .md-modal-content::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+
+        /* Syntax highlighting with highlight.js (One Dark theme) */
+        .hljs {
+            background: #0a0a0a !important;
+            color: #e0e0e0 !important;
+        }
+
+        .hljs-comment { color: #5c6370; }
+        .hljs-keyword { color: #c678dd; }
+        .hljs-string { color: #a3be8c; }
+        .hljs-number { color: #d19a66; }
+        .hljs-function { color: #61afef; }
+        .hljs-title { color: #61afef; }
+        .hljs-params { color: #abb2bf; }
+        .hljs-built_in { color: #e5c07b; }
+        .hljs-literal { color: #56b6c2; }
+        .hljs-attr { color: #d19a66; }
+        .hljs-variable { color: #e06c75; }
     </style>
+
+    <!-- Markdown rendering libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
 </head>
 <body>
+    <!-- Markdown Viewer Modal -->
+    <div id="mdModal" class="md-modal-overlay">
+        <div class="md-modal">
+            <div class="md-modal-header">
+                <div class="md-modal-title" id="mdModalTitle">loading...</div>
+                <button class="md-modal-close" id="mdModalClose">×</button>
+            </div>
+            <div class="md-modal-content">
+                <div id="mdContent" class="md-content"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <div class="terminal-header">
@@ -1464,6 +1777,113 @@
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 searchBox.focus();
+            }
+        });
+
+        // =======================================================================
+        // MARKDOWN VIEWER FUNCTIONALITY
+        // =======================================================================
+
+        const mdModal = document.getElementById('mdModal');
+        const mdModalClose = document.getElementById('mdModalClose');
+        const mdModalTitle = document.getElementById('mdModalTitle');
+        const mdContent = document.getElementById('mdContent');
+
+        // Configure marked.js options
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                headerIds: true,
+                mangle: false,
+                sanitize: false
+            });
+        }
+
+        // Function to open markdown modal
+        function openMarkdownModal(url, title) {
+            mdModal.classList.add('active');
+            mdModalTitle.textContent = title || url;
+            mdContent.innerHTML = '<div class="md-loading">Loading markdown content</div>';
+
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+
+            // Fetch markdown file
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to load ${url}: ${response.statusText}`);
+                    }
+                    return response.text();
+                })
+                .then(markdown => {
+                    // Parse markdown to HTML
+                    const html = marked.parse(markdown);
+                    mdContent.innerHTML = html;
+
+                    // Apply syntax highlighting to code blocks
+                    if (typeof hljs !== 'undefined') {
+                        mdContent.querySelectorAll('pre code').forEach(block => {
+                            hljs.highlightElement(block);
+                        });
+                    }
+
+                    // Scroll modal content to top
+                    mdContent.closest('.md-modal-content').scrollTop = 0;
+                })
+                .catch(error => {
+                    console.error('Error loading markdown:', error);
+                    mdContent.innerHTML = `
+                        <div class="md-error">
+                            <strong>Error loading markdown file:</strong><br>
+                            ${error.message}<br><br>
+                            <small>File path: ${url}</small>
+                        </div>
+                    `;
+                });
+        }
+
+        // Function to close markdown modal
+        function closeMarkdownModal() {
+            mdModal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Close button click
+        mdModalClose.addEventListener('click', closeMarkdownModal);
+
+        // Close on overlay click (outside modal)
+        mdModal.addEventListener('click', function(e) {
+            if (e.target === mdModal) {
+                closeMarkdownModal();
+            }
+        });
+
+        // Close on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && mdModal.classList.contains('active')) {
+                closeMarkdownModal();
+            }
+        });
+
+        // Intercept clicks on .md links
+        document.addEventListener('click', function(e) {
+            // Check if clicked element is a link
+            const link = e.target.closest('a');
+            if (!link) return;
+
+            const href = link.getAttribute('href');
+
+            // Check if it's a markdown file
+            if (href && href.endsWith('.md')) {
+                e.preventDefault();
+
+                // Extract filename for title
+                const filename = href.split('/').pop();
+
+                // Open in modal
+                openMarkdownModal(href, filename);
             }
         });
     </script>

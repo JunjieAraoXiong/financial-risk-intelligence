@@ -60,6 +60,17 @@ def create_app():
         docs_path = os.path.join(os.path.dirname(__file__), '..', 'docs_hub.html')
         return send_file(docs_path)
 
+    @app.route('/<path:filepath>')
+    def serve_markdown(filepath):
+        """Serve markdown files and other static files from project root"""
+        import os
+        # Only serve .md files and specific directories
+        if filepath.endswith('.md') or filepath.startswith('docs/') or filepath.startswith('logs/') or filepath.startswith('api/') or filepath.startswith('data/') or filepath.startswith('evolution/'):
+            file_path = os.path.join(os.path.dirname(__file__), '..', filepath)
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                return send_file(file_path)
+        return jsonify({'error': 'File not found'}), 404
+
     # ==========================================================================
     # HEALTH & INFO ENDPOINTS
     # ==========================================================================
