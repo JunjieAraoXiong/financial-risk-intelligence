@@ -6,27 +6,13 @@ Implementation of the FEEKG paper: "Risk identification and management through k
 
 **🌐 Frontend Repository:** https://github.com/JunjieAraoXiong/feekg-frontend
 
-## 📚 Documentation Hub
+## 📚 Documentation
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                                                                       │
-│  🖥️  INTERACTIVE DOCUMENTATION TERMINAL                              │
-│                                                                       │
-│  Navigate 50+ markdown files with a sleek terminal interface         │
-│  Features: Live search, categories, monochrome design                │
-│                                                                       │
-│  👉 Open: docs_hub.html in your browser                              │
-│  👉 Or run: open docs_hub.html                                       │
-│                                                                       │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Quick Links:**
-- **[📖 Documentation Terminal](docs_hub.html)** - Interactive hub with search (recommended!)
-- **[📑 Markdown Index](DOCS_INDEX.md)** - Text-based catalog of all docs
-- **[🔧 Technical Guide](CLAUDE.md)** - Complete project guide for developers
-- **[👀 Quick Start](VIEW.md)** - How to view visualizations
+**Essential Guides:**
+- **[📖 Documentation Index](docs/INDEX.md)** - Complete documentation catalog
+- **[🔧 Developer Guide](CLAUDE.md)** - Technical guide for contributors
+- **[🚀 Deployment](DEPLOYMENT.md)** - Railway + Vercel deployment guide
+- **[🏗️ Architecture](ARCHITECTURE.md)** - System design and three-layer model
 
 ## 📊 Database: AllegroGraph (Production)
 
@@ -37,7 +23,7 @@ Implementation of the FEEKG paper: "Risk identification and management through k
 - **Entities:** 22 major financial institutions (Morgan Stanley, Lehman Brothers, etc.)
 - **Query Language:** SPARQL
 
-> ⚠️ **Note:** Neo4j has been retired in favor of AllegroGraph. See [ALLEGROGRAPH_MIGRATION.md](ALLEGROGRAPH_MIGRATION.md) for details.
+> ⚠️ **Note:** Neo4j has been retired in favor of AllegroGraph. See [docs/ALLEGROGRAPH_SETUP.md](docs/ALLEGROGRAPH_SETUP.md) for details.
 
 ## 🚀 How to View Everything
 
@@ -58,7 +44,7 @@ open results/dashboard.html                  # Statistics dashboard
 - `clean_knowledge_graph.html` - Simplified graph view
 - And 2 more...
 
-See [FRONTEND_STATUS.md](FRONTEND_STATUS.md) for complete visualization documentation.
+See [docs/VISUALIZATIONS.md](docs/VISUALIZATIONS.md) for complete visualization documentation.
 
 ### Option 2: Next.js Frontend (Production Web App)
 
@@ -101,7 +87,7 @@ The demo page provides:
 ./venv/bin/python scripts/utils/check_feekg_mycatalog.py
 ```
 
-See [ALLEGROGRAPH_MIGRATION.md](ALLEGROGRAPH_MIGRATION.md) for SPARQL query examples.
+See [docs/ALLEGROGRAPH_SETUP.md](docs/ALLEGROGRAPH_SETUP.md) for SPARQL query examples.
 
 ### Option 5: Run Query Demos (Terminal)
 
@@ -443,7 +429,7 @@ for r in results:
     print(f"{r['label']['value']} ({r['type']['value']})")
 ```
 
-See [ALLEGROGRAPH_MIGRATION.md](ALLEGROGRAPH_MIGRATION.md) for more SPARQL examples.
+See [docs/ALLEGROGRAPH_SETUP.md](docs/ALLEGROGRAPH_SETUP.md) for more SPARQL examples.
 
 ## 📋 Quick Reference
 
@@ -503,13 +489,13 @@ curl http://localhost:5000/api/entities
 | **Interactive Visualizations** | `results/*.html` | 7 interactive HTML visualizations |
 | **API Demo** | `api/demo.html` | Interactive web interface |
 | **API Docs** | `api/README.md` | Complete API documentation |
-| **Project Guide** | `CLAUDE.md` | Comprehensive project guide |
-| **Deployment Guide** | See "Deployment" section | Railway + Vercel instructions |
-| **AllegroGraph Migration** | `ALLEGROGRAPH_MIGRATION.md` | Migration guide and SPARQL examples |
-| **Frontend Status** | `FRONTEND_STATUS.md` | Visualization documentation |
+| **Developer Guide** | `CLAUDE.md` | Comprehensive project guide |
+| **Deployment Guide** | `DEPLOYMENT.md` | Railway + Vercel instructions |
+| **AllegroGraph Setup** | `docs/ALLEGROGRAPH_SETUP.md` | Setup guide and SPARQL examples |
+| **Visualizations** | `docs/VISUALIZATIONS.md` | Visualization documentation |
 | **Capital IQ Data** | `data/capital_iq_raw/` | Raw transaction data (2007-2009) |
 | **Processed Data** | `data/capital_iq_processed/` | Classified Lehman events |
-| **Data Quality Report** | `DATA_QUALITY_REPORT.md` | Classification metrics |
+| **Documentation Index** | `docs/INDEX.md` | Complete docs catalog |
 
 ### Quick API Endpoints
 

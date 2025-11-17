@@ -201,11 +201,8 @@ data/capital_iq_raw/*.csv
 data/capital_iq_processed/*.json
 data/capital_iq_processed/archive/*.json
 
-# Documentation (not needed for Railway deployment)
-*.md
-!README.md
-!requirements.txt
-docs/
+# Documentation (kept in GitHub, excluded from Railway via .slugignore)
+# Note: These are tracked in git but excluded from Railway deployment
 logs/
 
 # Visualizations and results (not needed for Railway)
