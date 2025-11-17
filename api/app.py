@@ -599,12 +599,16 @@ def create_app():
         try:
             limit_events = int(request.args.get('limit', 500))
             min_score = float(request.args.get('min_score', 0.3))
+            start_date = request.args.get('start_date')
+            end_date = request.args.get('end_date')
 
             # Use OptimizedGraphBackend for SPARQL queries (works with AllegroGraph)
             backend = OptimizedGraphBackend()
             data = backend.get_graph_data_for_viz(
                 limit_events=limit_events,
-                min_evolution_score=min_score
+                min_evolution_score=min_score,
+                start_date=start_date,
+                end_date=end_date
             )
 
             # Transform to nodes/edges format

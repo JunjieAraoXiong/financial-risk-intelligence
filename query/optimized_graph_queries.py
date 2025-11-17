@@ -712,20 +712,26 @@ WHERE {{
 
         return relationships
 
-    def get_graph_data_for_viz(self, limit_events: int = 500, min_evolution_score: float = 0.3) -> Dict:
+    def get_graph_data_for_viz(self, limit_events: int = 500, min_evolution_score: float = 0.3,
+                                start_date: str = None, end_date: str = None) -> Dict:
         """
         Get complete graph data for visualization (entities, events, relationships)
 
         Args:
             limit_events: Maximum number of events to include
             min_evolution_score: Minimum score for evolution links
+            start_date: Optional start date filter (YYYY-MM-DD)
+            end_date: Optional end date filter (YYYY-MM-DD)
 
         Returns:
             Dict with nodes and edges for 2-layer graph (entities + events)
         """
-        # Get events
-        events_result = self.get_events_paginated(offset=0, limit=limit_events)
-        events = events_result['events']
+        # Get events (with optional date filtering)
+        if start_date and end_date:
+            events = self.get_events_by_timewindow(start_date, end_date, limit=limit_events)
+        else:
+            events_result = self.get_events_paginated(offset=0, limit=limit_events)
+            events = events_result['events']
         event_ids = [e['eventId'] for e in events]
 
         # Get entities
