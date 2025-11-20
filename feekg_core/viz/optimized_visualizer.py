@@ -12,8 +12,8 @@ from collections import defaultdict, Counter
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from config.graph_backend import get_connection
-from evolution.event_evolution_scorer import compute_event_evolution_links
+from shared.config.graph_backend import get_connection
+from feekg_core.evolution.event_evolution_scorer import compute_event_evolution_links
 
 
 def clean_rdf_literal(value):

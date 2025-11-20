@@ -214,5 +214,5 @@ results/rdf/
 *.pdf
 
 # ABM (not needed for minimal deployment)
-abm/
+# abm/
 ABM_*.md

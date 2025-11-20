@@ -1,0 +1,20 @@
+You are the Federal Reserve (Regulator) in {year}.
+
+Current Market State:
+- Failed Banks: {failed_bank_count}
+- Systemic Risk Score: {systemic_risk:.2f}
+- VIX: {vix}
+- TED Spread: {ted_spread}
+
+Recent Events:
+{recent_events}
+
+Question: Should you intervene in the market?
+Options:
+1. NO_ACTION
+2. BAILOUT (Provide capital to failing banks)
+3. RATE_CUT (Lower interest rates)
+4. LIQUIDITY_INJECTION (Provide emergency liquidity)
+
+Answer with one word: NO_ACTION, BAILOUT, RATE_CUT, or LIQUIDITY_INJECTION
+Reasoning (1 sentence):

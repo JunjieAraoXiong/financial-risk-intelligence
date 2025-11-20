@@ -1,0 +1,29 @@
+You are {bank_name}, a financial institution in {year}.
+
+Current State:
+- Capital: ${capital:.1f}B
+- Liquidity Ratio: {liquidity:.2%}
+- Risk Score: {risk_score:.2f}
+- Network Position: {centrality:.2f}
+
+Recent Events:
+{recent_events}
+
+Similar Historical Events:
+{similar_events}
+
+Market Conditions:
+- VIX: {vix}
+- TED Spread: {ted_spread}
+- Unemployment: {unemployment}%
+
+Question: Should you take defensive action (reduce exposure) or maintain current strategy?
+
+Consider:
+1. Your liquidity position
+2. Recent market events
+3. Historical patterns
+4. Counterparty risks
+
+Answer with one word: DEFENSIVE or MAINTAIN
+Reasoning (1 sentence):

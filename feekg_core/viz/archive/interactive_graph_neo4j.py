@@ -12,7 +12,7 @@ from pyvis.network import Network
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from config.graph_backend import get_connection
+from shared.config.graph_backend import get_connection
 
 
 class InteractiveKnowledgeGraph:

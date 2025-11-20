@@ -9,8 +9,8 @@ import json
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from evolution.methods import compute_all_evolution_links
-from config.graph_backend import get_connection
+from feekg_core.evolution.methods import compute_all_evolution_links
+from shared.config.graph_backend import get_connection
 
 
 def run_evolution_analysis(json_path='data/evergrande_crisis.json',

@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from viz.graph_viz import ThreeLayerVisualizer
-from viz.plot_utils import (plot_risk_timeline, plot_evolution_heatmap,
+from feekg_core.viz.graph_viz import ThreeLayerVisualizer
+from feekg_core.viz.plot_utils import (plot_risk_timeline, plot_evolution_heatmap,
                             plot_event_network, plot_component_breakdown,
                             plot_risk_distribution)
 

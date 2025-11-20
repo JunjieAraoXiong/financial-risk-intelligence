@@ -24,7 +24,7 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ingestion.process_capital_iq_v3 import CapitalIQProcessorV3
-from config.entity_aliases import get_canonical_name, get_all_aliases
+from shared.config.entity_aliases import get_canonical_name, get_all_aliases
 
 
 class CapitalIQProcessorV4(CapitalIQProcessorV3):

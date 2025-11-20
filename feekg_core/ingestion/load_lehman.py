@@ -18,8 +18,8 @@ from datetime import datetime
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.graph_backend import get_connection
-from evolution.methods import compute_all_evolution_links
+from shared.config.graph_backend import get_connection
+from feekg_core.evolution.methods import compute_all_evolution_links
 
 
 def load_lehman_case_study(input_file: str = 'data/capital_iq_processed/lehman_case_study.json'):
