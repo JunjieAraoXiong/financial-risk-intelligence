@@ -34,7 +34,11 @@ class FinancialCrisisModel(Model):
             }
             # Note: In Mesa 3.x, Agent adds itself to model.agents automatically via super().__init__ if model is passed
             # But we need to instantiate it.
-            a = BankAgent(self, entity_data, slm=self.slm)
+            # Assign Group A (Insider) vs Group B (Noise)
+            # First 50% are Insiders (RAG=True)
+            is_insider = i < (self.num_agents // 2)
+            
+            a = BankAgent(self, entity_data, slm=self.slm, use_rag=is_insider)
             # self.agents.add(a) # Not needed if Agent.__init__ does it? 
             # Wait, Agent.__init__(unique_id, model) calls model.register_agent(self)
             

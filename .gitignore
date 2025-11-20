@@ -216,3 +216,4 @@ results/rdf/
 # ABM (not needed for minimal deployment)
 # abm/
 ABM_*.md
+rag/data/

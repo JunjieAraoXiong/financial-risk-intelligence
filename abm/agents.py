@@ -1,6 +1,7 @@
 from mesa import Agent
 from slm.llama_client import LocalSLM
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +10,7 @@ class BankAgent(Agent):
     Bank agent with capital, liquidity, risk metrics.
     Makes decisions via SLM based on KG context.
     """
-    def __init__(self, model, entity_data, slm=None):
+    def __init__(self, model, entity_data, slm=None, use_rag=False):
         super().__init__(model)
         self.name = entity_data.get('name', f'Bank_{self.unique_id}')
         self.capital = entity_data.get('capital', 100.0)  # Billions
@@ -17,13 +18,28 @@ class BankAgent(Agent):
         self.risk_score = entity_data.get('risk_score', 0.0)
         self.failed = False
         self.slm = slm  # Instance of LocalSLM
+        self.use_rag = use_rag
 
     def step(self):
         if self.failed:
             return
 
-        # 1. Query KG for historical context (Placeholder for now)
-        context = "Similar historical events: Lehman Brothers collapse (2008), Bear Stearns bailout (2008)"
+        # 1. Query KG/RAG for context
+        context = ""
+        if self.use_rag:
+            try:
+                # Dynamic query based on state
+                query = f"What are the risks for {self.name} in {self.model.current_year}? Market outlook?"
+                # Import here to avoid circular imports if any, or just standard import at top
+                from rag.retriever import get_relevant_context
+                # Retrieve top 3 chunks
+                chunks = get_relevant_context(query, k=3, filter_metadata={'year': self.model.current_year})
+                context = "\n\n".join(chunks)
+            except Exception as e:
+                logger.error(f"RAG failed for {self.name}: {e}")
+                context = "No external context available."
+        else:
+            context = "Standard market conditions apply. No specific news."
 
         # 2. SLM decides action
         action = self.decide_action(context)
@@ -45,8 +61,21 @@ class BankAgent(Agent):
 
         # Construct prompt
         try:
-            with open('slm/prompts/bank_decision.txt', 'r') as f:
-                template = f.read()
+            # Load prompt template (ensure this file exists)
+            prompt_path = 'slm/prompts/bank_decision.txt'
+            if not os.path.exists(prompt_path):
+                 # Fallback prompt if file doesn't exist
+                 template = """
+                 You are {bank_name}. 
+                 Year: {year}. 
+                 Capital: {capital}. Liquidity: {liquidity}.
+                 Context: {similar_events}
+                 
+                 Decide action (DEFENSIVE or MAINTAIN).
+                 """
+            else:
+                with open(prompt_path, 'r') as f:
+                    template = f.read()
             
             prompt = template.format(
                 bank_name=self.name,
@@ -63,7 +92,7 @@ class BankAgent(Agent):
             )
 
             response = self.slm.generate(prompt)
-            logger.info(f"SLM Response for {self.name}: {response}")
+            logger.info(f"SLM Response for {self.name} (RAG={self.use_rag}): {response}")
             
             # Parse response
             if "DEFENSIVE" in response.upper():
