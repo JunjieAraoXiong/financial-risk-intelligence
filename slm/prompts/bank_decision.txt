@@ -6,24 +6,28 @@ Current State:
 - Risk Score: {risk_score:.2f}
 - Network Position: {centrality:.2f}
 
-Recent Events:
-{recent_events}
+Market Conditions:
+- Market Volatility: {vix:.0f}% (normal=10-20%, crisis=60-100%) → {volatility_status}
+- TED Spread: {ted_spread:.1f}% (normal<1%, crisis>2%)
+- Liquidity Factor: {liquidity_factor_value:.2f} (normal=1.0, stress<0.5, severe<0.3) → {liquidity_status}
 
-Similar Historical Events:
+Historical Intelligence:
 {similar_events}
 
-Market Conditions:
-- VIX: {vix}
-- TED Spread: {ted_spread}
-- Unemployment: {unemployment}%
+DECISION FRAMEWORK:
 
-Question: Should you take defensive action (reduce exposure) or maintain current strategy?
+MAINTAIN is correct when:
+- Volatility < 30% AND liquidity factor > 0.50 (NORMAL conditions)
+- Markets are stable with no signs of stress
+- Historical events show normal market functioning
 
-Consider:
-1. Your liquidity position
-2. Recent market events
-3. Historical patterns
-4. Counterparty risks
+DEFENSIVE is correct when:
+- Volatility > 50% (CRISIS) OR liquidity factor < 0.30 (SEVERE STRESS)
+- Historical events show bank failures, contagion, or liquidity freezes
+- TED spread > 2% indicating interbank stress
 
-Answer with one word: DEFENSIVE or MAINTAIN
-Reasoning (1 sentence):
+IMPORTANT: Both decisions can be correct depending on conditions. MAINTAIN is the appropriate choice during normal market conditions - unnecessary defensive action wastes capital.
+
+Question: Based on current conditions and historical intelligence, should you take DEFENSIVE action or MAINTAIN current strategy?
+
+Your answer must be exactly one word: DEFENSIVE or MAINTAIN

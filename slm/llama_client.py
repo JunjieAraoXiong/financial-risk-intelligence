@@ -17,10 +17,23 @@ class LocalSLM:
         logger.info(f"Loading SLM model: {model_name}")
         
         try:
+            # Determine device and dtype
+            if torch.cuda.is_available():
+                device_info = "CUDA"
+                dtype = torch.float16
+            elif torch.backends.mps.is_available():
+                device_info = "MPS"
+                dtype = torch.float16
+            else:
+                device_info = "CPU"
+                dtype = torch.float32
+
+            logger.info(f"Using device: {device_info}")
+
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                torch_dtype=dtype,
                 device_map=device_map,
                 low_cpu_mem_usage=True
             )
@@ -57,9 +70,22 @@ class LocalSLM:
             str: Generated text
         """
         try:
+            # Handle chat format
+            if isinstance(prompt, str):
+                messages = [{"role": "user", "content": prompt}]
+            else:
+                messages = prompt
+
+            # Apply chat template
+            prompt_formatted = self.tokenizer.apply_chat_template(
+                messages, 
+                tokenize=False, 
+                add_generation_prompt=True
+            )
+
             # Use the pipeline for generation
             sequences = self.pipe(
-                prompt,
+                prompt_formatted,
                 max_new_tokens=max_tokens,
                 temperature=temperature,
                 do_sample=True,

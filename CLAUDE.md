@@ -451,3 +451,164 @@ Last Updated: 2025-11-15
 Version: 2.0.0 (AllegroGraph)
 Status: Production Ready
 Database: AllegroGraph @ qa-agraph.nelumbium.ai
+
+---
+
+# RAG Pipeline Context (Vector RAG Baseline)
+
+## Research Context
+
+### Reframing the Research Contribution
+
+**FE-EKG paper (structured)**
+- Knowledge graph with entity-event-risk layers
+- Explicit causal links between events
+- Rule-based risk propagation over the graph
+
+**This paper (unstructured RAG)**
+- Vector retrieval over historical financial documents
+- Implicit patterns in JPM/BIS/FT/FCIC reports
+- An SLM interprets and applies this context to make decisions in an ABM
+
+### Research Question
+**How does access to historical financial intelligence (via RAG) improve risk-aware decision-making compared to uninformed SLM agents in a financial ABM?**
+
+### Hypotheses
+
+**H1**: RAG-enabled agents make more contextually appropriate decisions across different market regimes (normal, stress, crisis).
+
+**H2**: The information gap between RAG and non-RAG agents appears as measurable differences in:
+- (i) decision consistency
+- (ii) timing of risk recognition
+- (iii) survival / loss under stress
+
+**H3**: RAG retrieval quality (relevance of retrieved documents) correlates with agent decision quality.
+
+### Comparison to FE-EKG
+
+| Approach | Method | Strengths |
+|----------|--------|-----------|
+| **FE-EKG** | Explicit causal chains, structured SPARQL queries, rule-based risk propagation | High precision, lower flexibility |
+| **RAG** | Semantic similarity search over unstructured text, LLM-based interpretation | Higher flexibility and coverage, implicit causality |
+
+### Key Contribution
+We compare a **structured (KG-based)** and **unstructured (RAG-based)** approach to financial risk intelligence in a multi-agent setting, and study how information quality (truthful RAG vs uninformed SLM) affects both **individual decisions** and **system-level stability**.
+
+## Current Phase
+
+**Phase 2: ABM Information Asymmetry Experiment** (Active)
+
+Components:
+- **Embeddings**: BGE `BAAI/bge-large-en-v1.5` (local, no API cost)
+- **Vector Store**: ChromaDB at `rag/data/chroma_db/`
+- **Reranker**: BGE `BAAI/bge-reranker-v2-m3`
+- **SLM**: `meta-llama/Llama-3.2-1B-Instruct`
+- **Device**: MPS (Apple Silicon GPU)
+- Integration with `BankAgent.use_rag` flag
+
+## RAG Dataset
+
+Location: `rag/data/raw/` (7.9GB total)
+
+| Dataset | Files | Size | Format | Risk Coverage |
+|---------|-------|------|--------|---------------|
+| JPM Weekly (2002-2009) | 366 | 428MB | PDF | Credit, liquidity, market risks |
+| BIS Annual (1931-2024) | 94 | 838MB | PDF | Systemic risk, banking stability |
+| BIS Quarterly (1997-2024) | 114 | 127MB | PDF | Cross-border risks, derivatives |
+| FT Archive | 2,626 | 54MB | JSON | Event-driven risks, sentiment |
+| FCIC Report | 1 | 5.3MB | PDF | Comprehensive crisis analysis |
+| E-Books | 6 | 49MB | PDF | Historical context |
+
+**Total**: 3,207 files covering multiple risk scenarios (not just Lehman)
+
+## Ingestion Status
+
+### Completed (2025-11-20)
+- **Files processed**: 3,198
+- **Total chunks**: 442,963
+- **Embeddings**: BGE `BAAI/bge-large-en-v1.5` (local)
+- **Chunk size**: 500 tokens, 50 overlap
+- **Features**: Checkpointing, retry logic, rate limiting
+
+> **Note**: Originally ingested with OpenAI embeddings, now using local BGE for cost-free inference.
+
+## ABM Integration
+
+### BankAgent Groups (`abm/agents.py`)
+- **Group A (Bank_0-4)**: `use_rag=True` → "Insiders/Truth" agents with historical context
+- **Group B (Bank_5-9)**: `use_rag=False` → "Noise Traders" with hallucination-prone SLM
+
+### Experiment Configuration (`abm/model.py`)
+- **52 weeks** simulation (1 year)
+- **Shock trigger**: Week 5 (testing) or Week 40 (historical Lehman timing)
+- **Pre-shock**: Volatility 10%, Liquidity factor 1.0
+- **Post-shock**: Volatility 80%, Liquidity factor 0.30
+- **Optimization**: RAG queries only when volatility > 0.15
+
+### Evaluation Metrics
+| Metric | Description |
+|--------|-------------|
+| Survival Rate | % of each group alive at simulation end |
+| Decision Distribution | Count of DEFENSIVE vs MAINTAIN per group |
+| Liquidity Accumulation | Average liquidity over time |
+| Response Quality | Source citations vs hallucinations |
+| Capital Preservation | Final capital (started at 100B each) |
+
+## Experiment Results
+
+### Run 1: Baseline (2025-11-21)
+- **Liquidity Factor**: 0.30
+- **Result**: All 10 banks survived 52 weeks (5 insiders, 5 noise traders)
+- **Finding**: Shock too mild - no survival differentiation
+- **Value**: Demonstrated RAG pipeline works, captured qualitative response differences
+
+### Planned Parameter Sweep
+| Run | Liquidity Factor | Purpose |
+|-----|------------------|---------|
+| 1 ✓ | 0.30 | Baseline (all survive) |
+| 2 | 0.20 | Moderate stress |
+| 3 | 0.15 | Significant stress |
+| 4 | 0.10 | Severe crisis |
+
+### Running Experiments
+```bash
+# In a new terminal, navigate to project:
+cd /Users/hansonxiong/Desktop/DDP/feekg
+
+# Run with different liquidity factors:
+source .env && export PYTHONPATH=. && export TOKENIZERS_PARALLELISM=false
+python run_experiment.py --liquidity-factor 0.20
+python run_experiment.py --liquidity-factor 0.15
+python run_experiment.py --liquidity-factor 0.10
+```
+
+Results saved to: `results/experiment_lf_<value>.csv`
+
+## Commands
+
+```bash
+# Run experiment
+source .env && export PYTHONPATH=. && export TOKENIZERS_PARALLELISM=false && python run_experiment.py
+
+# Check database
+python rag/check_db.py
+
+# Test retrieval
+python rag/test_retrieval.py
+```
+
+## Comparison: FE-EKG vs RAG Approach
+
+| Aspect | FE-EKG (Structured KG) | RAG (Unstructured) |
+|--------|------------------------|-------------------|
+| Data Model | Entity-Event-Risk triples | Vector embeddings |
+| Query Method | SPARQL | Semantic similarity |
+| Causal Links | Explicit (EVOLVES_TO) | Implicit (LLM inference) |
+| Strength | Precision, traceability | Flexibility, coverage |
+| Risk Propagation | Rule-based (6 methods) | Context-driven (SLM) |
+
+## Future Phases
+
+- **Phase 3**: Add contagion mechanism (inter-bank counterparty risk) to test systemic risk hypothesis
+- **Phase 4**: GraphRAG / KG-GNN fusion combining FE-EKG structure with RAG retrieval
+- **Phase 5**: Comparative evaluation of KG vs RAG vs Hybrid approaches

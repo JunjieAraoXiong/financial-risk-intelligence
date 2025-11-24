@@ -41,3 +41,10 @@ gunicorn>=21.2.0  # Production WSGI server
 # Testing
 pytest>=7.0.0
 pytest-cov>=4.0.0
+
+# RAG Dependencies
+langchain-community>=0.0.10
+langchain-openai>=0.0.5
+langchain-huggingface>=0.0.1
+chromadb>=0.4.22
+sentence-transformers>=2.3.0

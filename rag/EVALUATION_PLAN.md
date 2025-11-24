@@ -8,6 +8,13 @@ For your research paper, you need to evaluate three distinct layers of the syste
 ### Framework: RAGAS (Retrieval Augmented Generation Assessment)
 We will use the **RAGAS** library to generate automated scores, aligning with standard SLM benchmarks for reasoning accuracy.
 
+### 1. Micro-Level: Retrieval Quality (RAGAS)
+**Goal**: Ensure the RAG system finds the *correct* JPM report paragraphs.
+- **Metric**: `Context Recall`, `Faithfulness`.
+- **Judge Model**: **GPT-5.1 / Gemini 3 Pro** (or current SOTA).
+    - *Why*: Advanced reasoning is required to detect subtle hallucinations in financial text.
+- **Tool**: `RAGAS` framework.
+
 | Metric | What it Measures | How to Calculate |
 | :--- | :--- | :--- |
 | **Context Precision** | Is the retrieved information actually relevant? | `ragas.metrics.context_precision` |
