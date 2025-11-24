@@ -2,6 +2,11 @@
 
 Comparing structured (Knowledge Graph) vs unstructured (RAG) approaches to financial risk intelligence in multi-agent crisis simulations.
 
+![Banner](assets/banner.png)
+
+![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
 ## Research Question
 
 **How does information structure affect crisis decision-making?**
