@@ -2,9 +2,11 @@ from mesa import Model
 # from mesa.time import RandomActivation # REMOVED: Deprecated in Mesa 3.0+
 from abm.agents import BankAgent
 from abm.rag_trigger_policy import RagTriggerPolicy, PolicyConfig
+from abm.contagion import ContagionNetwork
 from slm.llama_client import LocalSLM
 from rag.retriever import get_context_multi_query, get_agent_context
 import logging
+import numpy as np
 from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
@@ -34,7 +36,12 @@ class FinancialCrisisModel(Model):
         initial_capital: float = 100.0,
         initial_liquidity: float = 0.30,
         failure_threshold: float = 0.03,
-        rag_policy_config: Optional[PolicyConfig] = None
+        rag_policy_config: Optional[PolicyConfig] = None,
+        enable_contagion: bool = True,
+        contagion_factor: float = 0.5,
+        recovery_rate: float = 0.4,
+        network_type: str = "random",
+        exposure_matrix: Optional[np.ndarray] = None
     ):
         """
         Initialize the financial crisis model.
@@ -52,6 +59,15 @@ class FinancialCrisisModel(Model):
             failure_threshold: Effective liquidity below which banks fail (default 0.03).
             rag_policy_config: Optional PolicyConfig for RAG trigger policy.
                               If None, uses default policy configuration.
+            enable_contagion: Whether to enable inter-bank contagion (default True).
+            contagion_factor: Severity of contagion losses (0-1, default 0.5).
+                            Higher values mean more severe loss propagation.
+            recovery_rate: Fraction of exposure recovered in bankruptcy (0-1, default 0.4).
+                         Lower values mean higher losses for creditors.
+            network_type: Type of exposure network topology (default "random").
+                        Options: "random", "core_periphery", "ring", "complete".
+            exposure_matrix: Optional pre-defined NxN exposure matrix.
+                           If None, generates based on network_type.
         """
         super().__init__()
         self.num_agents = n_banks
@@ -65,6 +81,15 @@ class FinancialCrisisModel(Model):
 
         # RAG trigger policy configuration
         self.rag_policy_config = rag_policy_config
+
+        # Contagion configuration
+        self.enable_contagion = enable_contagion
+        self.contagion_factor = contagion_factor
+        self.recovery_rate = recovery_rate
+        self.network_type = network_type
+        self.exposure_matrix = exposure_matrix
+        self.contagion_network: Optional[ContagionNetwork] = None
+        self.cascade_in_progress = False  # Prevent recursive cascades
 
         # Configuration for agents
         self.agent_config = {
@@ -109,7 +134,22 @@ class FinancialCrisisModel(Model):
                 policy_config=self.rag_policy_config if is_insider else None
             )
             # self.schedule.add(a) # REMOVED: Agents are automatically added to self.agents
-            
+
+        # Initialize contagion network after all agents are created
+        if self.enable_contagion:
+            # Get list of BankAgents from model.agents
+            bank_agents = [a for a in self.agents if isinstance(a, BankAgent)]
+            self.contagion_network = ContagionNetwork(
+                banks=bank_agents,
+                exposure_matrix=self.exposure_matrix,
+                contagion_factor=self.contagion_factor,
+                recovery_rate=self.recovery_rate,
+                network_type=self.network_type
+            )
+            logger.info(
+                f"Contagion network initialized: systemic_risk={self.contagion_network.calculate_systemic_risk():.3f}"
+            )
+
     def get_date_string(self, step):
         """Map step to a month in 2008."""
         months = [
@@ -278,4 +318,93 @@ class FinancialCrisisModel(Model):
                     if (insiders_total + noise_total) > 0 else 0
                 )
             }
+        }
+
+    def on_bank_failure(self, failed_bank: BankAgent):
+        """
+        Handle bank failure event and propagate contagion.
+
+        This method is called by BankAgent.fail() to notify the model
+        of a failure. It triggers contagion propagation if enabled.
+
+        Args:
+            failed_bank: The bank that has just failed.
+        """
+        if not self.enable_contagion or self.contagion_network is None:
+            return
+
+        # Prevent recursive cascades during cascade processing
+        if self.cascade_in_progress:
+            return
+
+        self.cascade_in_progress = True
+        try:
+            logger.warning(f"Bank {failed_bank.name} failed - triggering contagion cascade")
+            cascade_result = self.contagion_network.run_cascade(failed_bank)
+
+            if cascade_result["cascade_failures"]:
+                logger.warning(
+                    f"Contagion cascade: {len(cascade_result['cascade_failures'])} "
+                    f"additional banks failed: {cascade_result['cascade_failures']}"
+                )
+        finally:
+            self.cascade_in_progress = False
+
+    def get_contagion_stats(self) -> Dict[str, Any]:
+        """
+        Get contagion network statistics.
+
+        Returns:
+            Dictionary with network metrics and cascade history.
+        """
+        if self.contagion_network is None:
+            return {"enabled": False}
+
+        stats = self.contagion_network.get_network_stats()
+        stats["enabled"] = True
+        return stats
+
+    def get_systemic_risk(self) -> float:
+        """
+        Get current systemic risk level.
+
+        Returns:
+            Systemic risk score between 0 (low) and 1 (high).
+        """
+        if self.contagion_network is None:
+            return 0.0
+        return self.contagion_network.calculate_systemic_risk()
+
+    def get_most_systemically_important_banks(self, top_n: int = 3) -> List[tuple]:
+        """
+        Get the most systemically important banks.
+
+        Args:
+            top_n: Number of banks to return.
+
+        Returns:
+            List of (bank_name, importance_score) tuples.
+        """
+        if self.contagion_network is None:
+            return []
+        return self.contagion_network.get_most_systemically_important(top_n)
+
+    def get_bank_exposure(self, bank_name: str) -> Dict[str, Any]:
+        """
+        Get exposure information for a specific bank.
+
+        Args:
+            bank_name: Name of the bank.
+
+        Returns:
+            Dictionary with bank's exposures and counterparty risk.
+        """
+        if self.contagion_network is None:
+            return {"enabled": False}
+
+        return {
+            "bank": bank_name,
+            "total_exposure": self.contagion_network.get_total_exposure(bank_name),
+            "counterparty_risk": self.contagion_network.get_counterparty_risk(bank_name),
+            "enabled": True
         }

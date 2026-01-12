@@ -229,8 +229,22 @@ Output exactly one word: DEFENSIVE or MAINTAIN."""
                 logger.debug(f"{self.name}: MAINTAIN during crisis - liquidity drained to {self.liquidity:.2f}")
 
     def fail(self):
+        """
+        Mark this bank as failed and notify the model.
+
+        When a bank fails, it triggers contagion propagation if the model
+        has a contagion network configured. The model handles the cascade
+        effects through its contagion mechanism.
+        """
+        if self.failed:
+            return  # Already failed, prevent double-counting
+
         self.failed = True
         logger.info(f"Bank {self.name} has FAILED")
+
+        # Notify model to propagate contagion
+        if hasattr(self.model, 'on_bank_failure'):
+            self.model.on_bank_failure(self)
 
     def _build_market_state(self, market_ctx: Dict[str, Any]) -> Dict[str, Any]:
         """
