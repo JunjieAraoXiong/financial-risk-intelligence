@@ -1,7 +1,9 @@
 from mesa import Agent
 from slm.llama_client import LocalSLM
+from abm.rag_trigger_policy import RagTriggerPolicy, PolicyConfig, TriggerReason
 import logging
 import os
+from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
@@ -9,68 +11,101 @@ class BankAgent(Agent):
     """
     Bank agent with capital, liquidity, risk metrics.
     Makes decisions via SLM based on KG context.
+
+    The agent uses a RagTriggerPolicy to determine when to query the RAG system
+    for historical financial intelligence. The policy considers multiple factors:
+    - Market volatility levels and spikes
+    - Liquidity stress (market-wide and agent-specific)
+    - Peer bank failures and stress
+    - Credit rating changes
+    - Capital levels and losses
     """
-    def __init__(self, model, entity_data, slm=None, use_rag=False, config=None):
+
+    def __init__(
+        self,
+        model,
+        entity_data: Dict[str, Any],
+        slm=None,
+        use_rag: bool = False,
+        config: Optional[Dict[str, Any]] = None,
+        rag_policy: Optional[RagTriggerPolicy] = None,
+        policy_config: Optional[PolicyConfig] = None
+    ):
+        """
+        Initialize a BankAgent.
+
+        Args:
+            model: The Mesa model this agent belongs to.
+            entity_data: Dictionary with agent initialization data:
+                - name: str (optional, defaults to Bank_{id})
+                - capital: float (billions, default 100.0)
+                - liquidity: float (ratio, default 0.20)
+                - risk_score: float (default 0.0)
+            slm: Optional LocalSLM instance for decision making.
+            use_rag: Whether this agent can use RAG for context.
+            config: Optional configuration dictionary.
+            rag_policy: Optional RagTriggerPolicy instance.
+                       If not provided and use_rag is True, creates a default policy.
+            policy_config: Optional PolicyConfig for creating a new policy.
+        """
         super().__init__(model)
         self.config = config or {}
         self.name = entity_data.get('name', f'Bank_{self.unique_id}')
         self.capital = entity_data.get('capital', 100.0)  # Billions
+        self.initial_capital = self.capital  # Track for loss calculations
         self.liquidity = entity_data.get('liquidity', 0.20)  # Ratio
         self.risk_score = entity_data.get('risk_score', 0.0)
+        self.credit_rating = entity_data.get('credit_rating', 'A')  # Default rating
+        self.previous_credit_rating = self.credit_rating
         self.failed = False
         self.slm = slm  # Instance of LocalSLM
         self.use_rag = use_rag
         self.last_action = None  # Track last decision for logging
+        self.last_rag_trigger = None  # Track last RAG trigger result
+        self.rag_query_count = 0  # Track total RAG queries
+
+        # Initialize RAG trigger policy
+        if rag_policy:
+            self.rag_policy = rag_policy
+        elif use_rag:
+            self.rag_policy = RagTriggerPolicy(policy_config)
+        else:
+            self.rag_policy = None
 
     def step(self):
         if self.failed:
             return
 
-        # 1. Query KG/RAG for context
-        context = ""
+        # 1. Build state for RAG trigger policy
         market_ctx = getattr(self.model, 'market_context', {})
         volatility = market_ctx.get('volatility', 0.10)
         liquidity_factor = market_ctx.get('liquidity', 1.0)
         current_date = market_ctx.get('date', 'September 2008')
 
-        if self.use_rag:
-            # Get agent-specific context tailored to this bank's situation
-            get_agent_ctx = market_ctx.get('get_agent_context')
-            if get_agent_ctx and volatility >= 0.15:
-                # Only query RAG when market is stressed (optimization)
-                try:
-                    chunks = get_agent_ctx(
-                        bank_name=self.name,
-                        date=current_date,
-                        capital=self.capital,
-                        liquidity=self.liquidity,
-                        risk_score=self.risk_score,
-                        volatility=volatility,
-                        k=3
-                    )
-                    context = "\n\n".join(chunks)
-                    logger.info(f"{self.name}: Retrieved {len(chunks)} agent-specific chunks")
-                except Exception as e:
-                    logger.error(f"{self.name}: Agent RAG query failed: {e}")
-                    context = market_ctx.get('news', "No news available.")
-            else:
-                # Use shared context when volatility is low
-                context = market_ctx.get('news', "No news available.")
-        else:
-            context = "Standard market conditions apply. No specific news."
+        # Build market state for policy
+        market_state = self._build_market_state(market_ctx)
 
-        # 2. SLM decides action
+        # Build agent state for policy
+        agent_state = self._build_agent_state()
+
+        # Build history for policy
+        history = self._build_history()
+
+        # 2. Query KG/RAG for context using smart trigger policy
+        context = self._get_rag_context(market_state, agent_state, history, market_ctx)
+
+        # 3. SLM decides action
         # Optimization: Skip SLM if volatility is low (fast forward)
         if volatility < 0.15:
-             action = 'MAINTAIN'
+            action = 'MAINTAIN'
         else:
-             action = self.decide_action(context)
+            action = self.decide_action(context)
 
-        # 3. Execute action and track it
+        # 4. Execute action and track it
         self.last_action = action
         self.execute_action(action)
 
-        # 4. Check failure condition
+        # 5. Check failure condition
         # Apply global liquidity factor to actual available liquidity
         market_ctx = getattr(self.model, 'market_context', {})
         liquidity_factor = market_ctx.get('liquidity', 1.0)
@@ -196,3 +231,193 @@ Output exactly one word: DEFENSIVE or MAINTAIN."""
     def fail(self):
         self.failed = True
         logger.info(f"Bank {self.name} has FAILED")
+
+    def _build_market_state(self, market_ctx: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Build the market state dictionary for the RAG trigger policy.
+
+        Args:
+            market_ctx: The market context from the model.
+
+        Returns:
+            Dictionary with market state information.
+        """
+        # Get list of failed banks from model
+        failed_banks = []
+        stressed_banks = []
+
+        if hasattr(self.model, 'agents'):
+            for agent in self.model.agents:
+                if isinstance(agent, BankAgent) and agent.name != self.name:
+                    if agent.failed:
+                        failed_banks.append(agent.name)
+                    elif agent.liquidity < 0.10:  # Stressed
+                        stressed_banks.append({
+                            "name": agent.name,
+                            "liquidity": agent.liquidity,
+                            "capital": agent.capital
+                        })
+
+        return {
+            "volatility": market_ctx.get('volatility', 0.10),
+            "liquidity": market_ctx.get('liquidity', 1.0),
+            "week": market_ctx.get('week', 0),
+            "news": market_ctx.get('news', ''),
+            "date": market_ctx.get('date', 'September 2008'),
+            "failed_banks": failed_banks,
+            "stressed_banks": stressed_banks
+        }
+
+    def _build_agent_state(self) -> Dict[str, Any]:
+        """
+        Build the agent state dictionary for the RAG trigger policy.
+
+        Returns:
+            Dictionary with agent state information.
+        """
+        return {
+            "name": self.name,
+            "capital": self.capital,
+            "initial_capital": self.initial_capital,
+            "liquidity": self.liquidity,
+            "risk_score": self.risk_score,
+            "credit_rating": self.credit_rating
+        }
+
+    def _build_history(self) -> Dict[str, Any]:
+        """
+        Build the history dictionary for the RAG trigger policy.
+
+        Returns:
+            Dictionary with historical information for trigger decisions.
+        """
+        # Track recent events (could be expanded)
+        events = []
+
+        # Include any market events from the news context
+        market_ctx = getattr(self.model, 'market_context', {})
+        news = market_ctx.get('news', '')
+
+        # Simple event extraction from news (could be more sophisticated)
+        event_keywords = [
+            'bankruptcy', 'failure', 'collapse', 'crisis', 'default',
+            'bailout', 'intervention', 'downgrade', 'layoff', 'merger'
+        ]
+        for keyword in event_keywords:
+            if keyword.lower() in news.lower():
+                events.append(f"Market event: {keyword}")
+
+        return {
+            "previous_credit_rating": self.previous_credit_rating,
+            "events": events
+        }
+
+    def _get_rag_context(
+        self,
+        market_state: Dict[str, Any],
+        agent_state: Dict[str, Any],
+        history: Dict[str, Any],
+        market_ctx: Dict[str, Any]
+    ) -> str:
+        """
+        Get RAG context based on the smart trigger policy.
+
+        Uses the RagTriggerPolicy to determine whether to query RAG,
+        and if so, retrieves agent-specific context.
+
+        Args:
+            market_state: Current market conditions.
+            agent_state: Agent's current state.
+            history: Historical data.
+            market_ctx: Original market context from model.
+
+        Returns:
+            Context string for decision making.
+        """
+        if not self.use_rag:
+            return "Standard market conditions apply. No specific news."
+
+        # Use the RAG trigger policy to decide if we should query
+        if self.rag_policy:
+            trigger_result = self.rag_policy.should_query_rag(
+                market_state, agent_state, history
+            )
+            self.last_rag_trigger = trigger_result
+
+            if not trigger_result.should_trigger:
+                # Policy says don't query - use shared context
+                logger.debug(f"{self.name}: RAG not triggered - using shared context")
+                return market_ctx.get('news', "No news available.")
+
+            # Log trigger reasons
+            reason_names = [r.value for r in trigger_result.reasons]
+            logger.info(
+                f"{self.name}: RAG triggered (reasons: {reason_names}, "
+                f"priority: {trigger_result.priority})"
+            )
+        else:
+            # Fallback to old behavior if no policy
+            volatility = market_state.get('volatility', 0.10)
+            if volatility < 0.15:
+                return market_ctx.get('news', "No news available.")
+
+        # Query RAG for agent-specific context
+        get_agent_ctx = market_ctx.get('get_agent_context')
+        if not get_agent_ctx:
+            return market_ctx.get('news', "No news available.")
+
+        try:
+            current_date = market_state.get('date', 'September 2008')
+            volatility = market_state.get('volatility', 0.10)
+
+            # Add context hints from trigger policy to influence retrieval
+            context_hints = {}
+            if self.last_rag_trigger and self.last_rag_trigger.context_hints:
+                context_hints = self.last_rag_trigger.context_hints
+
+            chunks = get_agent_ctx(
+                bank_name=self.name,
+                date=current_date,
+                capital=self.capital,
+                liquidity=self.liquidity,
+                risk_score=self.risk_score,
+                volatility=volatility,
+                k=3
+            )
+            context = "\n\n".join(chunks)
+            self.rag_query_count += 1
+            logger.info(
+                f"{self.name}: Retrieved {len(chunks)} agent-specific chunks "
+                f"(total queries: {self.rag_query_count})"
+            )
+            return context
+
+        except Exception as e:
+            logger.error(f"{self.name}: Agent RAG query failed: {e}")
+            return market_ctx.get('news', "No news available.")
+
+    def get_rag_stats(self) -> Dict[str, Any]:
+        """
+        Get RAG query statistics for this agent.
+
+        Returns:
+            Dictionary with RAG usage statistics.
+        """
+        stats = {
+            "name": self.name,
+            "use_rag": self.use_rag,
+            "total_queries": self.rag_query_count,
+            "last_trigger": None
+        }
+
+        if self.last_rag_trigger:
+            stats["last_trigger"] = {
+                "triggered": self.last_rag_trigger.should_trigger,
+                "reasons": [r.value for r in self.last_rag_trigger.reasons],
+                "priority": self.last_rag_trigger.priority
+            }
+
+        if self.rag_policy:
+            stats["policy_stats"] = self.rag_policy.get_query_stats(self.name)
+
+        return stats

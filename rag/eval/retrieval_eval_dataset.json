@@ -1,0 +1,335 @@
+{
+  "metadata": {
+    "description": "Retrieval quality evaluation dataset for financial crisis RAG pipeline",
+    "created": "2026-01-12",
+    "version": "1.0",
+    "relevance_scale": {
+      "3": "Highly relevant - directly answers the query",
+      "2": "Relevant - contains useful information about the topic",
+      "1": "Marginally relevant - mentions the topic but limited detail",
+      "0": "Not relevant"
+    }
+  },
+  "queries": [
+    {
+      "id": "Q001",
+      "query": "What caused Lehman Brothers collapse?",
+      "category": "crisis_event",
+      "date_context": "September 2008",
+      "expected_topics": ["Lehman Brothers", "bankruptcy", "collapse", "subprime", "mortgage"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "Lehman", "keywords": ["bankruptcy", "collapse", "Chapter 11", "failure"], "relevance": 3},
+          {"pattern": "FCIC", "keywords": ["Lehman", "collapse", "cause"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "mortgage", "keywords": ["crisis", "subprime", "default"], "relevance": 2},
+          {"pattern": "2008-09", "keywords": ["financial crisis", "bank failure"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "investment bank", "keywords": ["risk", "leverage"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["2007-01", "2007-02", "normal conditions", "stable growth"]
+    },
+    {
+      "id": "Q002",
+      "query": "liquidity crisis indicators and warning signs",
+      "category": "risk_indicators",
+      "date_context": "2008",
+      "expected_topics": ["liquidity", "TED spread", "interbank", "credit freeze", "LIBOR"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "liquidity", "keywords": ["crisis", "freeze", "stress", "shortage"], "relevance": 3},
+          {"pattern": "interbank", "keywords": ["lending", "freeze", "rate"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "TED spread", "keywords": ["spread", "stress"], "relevance": 2},
+          {"pattern": "LIBOR", "keywords": ["rate", "stress", "interbank"], "relevance": 2},
+          {"pattern": "credit", "keywords": ["freeze", "tightening", "crisis"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "funding", "keywords": ["market", "stress"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["normal", "adequate", "healthy", "stable"]
+    },
+    {
+      "id": "Q003",
+      "query": "Bear Stearns failure and JPMorgan acquisition",
+      "category": "crisis_event",
+      "date_context": "March 2008",
+      "expected_topics": ["Bear Stearns", "JPMorgan", "acquisition", "Federal Reserve", "discount window"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "Bear Stearns", "keywords": ["collapse", "acquisition", "JPMorgan", "failure"], "relevance": 3},
+          {"pattern": "2008-03", "keywords": ["Bear", "crisis", "Fed"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "investment bank", "keywords": ["failure", "bailout", "rescue"], "relevance": 2},
+          {"pattern": "Federal Reserve", "keywords": ["emergency", "lending", "intervention"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "bank", "keywords": ["crisis", "2008"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["2009", "recovery", "stable"]
+    },
+    {
+      "id": "Q004",
+      "query": "credit default swap risk and AIG exposure",
+      "category": "derivatives",
+      "date_context": "September 2008",
+      "expected_topics": ["CDS", "credit default swap", "AIG", "counterparty risk", "derivatives"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "AIG", "keywords": ["CDS", "credit default", "bailout", "exposure"], "relevance": 3},
+          {"pattern": "credit default swap", "keywords": ["risk", "counterparty", "AIG"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "derivatives", "keywords": ["risk", "exposure", "counterparty"], "relevance": 2},
+          {"pattern": "counterparty", "keywords": ["risk", "failure", "CDS"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "insurance", "keywords": ["risk", "exposure"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["normal trading", "stable market"]
+    },
+    {
+      "id": "Q005",
+      "query": "systemic risk contagion in banking sector",
+      "category": "systemic_risk",
+      "date_context": "2008",
+      "expected_topics": ["systemic risk", "contagion", "too big to fail", "interconnected", "spillover"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "systemic", "keywords": ["risk", "contagion", "failure", "interconnected"], "relevance": 3},
+          {"pattern": "contagion", "keywords": ["bank", "crisis", "spread", "spillover"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "too big to fail", "keywords": ["bank", "systemic"], "relevance": 2},
+          {"pattern": "interconnected", "keywords": ["bank", "risk", "financial"], "relevance": 2},
+          {"pattern": "BIS", "keywords": ["systemic", "stability", "risk"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "bank failure", "keywords": ["crisis"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["isolated", "contained", "stable"]
+    },
+    {
+      "id": "Q006",
+      "query": "money market fund breaking the buck Reserve Primary",
+      "category": "market_event",
+      "date_context": "September 2008",
+      "expected_topics": ["money market", "Reserve Primary", "breaking the buck", "NAV", "redemption"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "money market", "keywords": ["breaking the buck", "Reserve", "NAV", "redemption"], "relevance": 3},
+          {"pattern": "Reserve Primary", "keywords": ["money market", "Lehman", "loss"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "redemption", "keywords": ["fund", "crisis", "run"], "relevance": 2},
+          {"pattern": "2008-09", "keywords": ["money market", "fund"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "fund", "keywords": ["crisis", "loss"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["stable NAV", "normal operations"]
+    },
+    {
+      "id": "Q007",
+      "query": "TARP bailout program Treasury intervention",
+      "category": "policy_response",
+      "date_context": "October 2008",
+      "expected_topics": ["TARP", "Troubled Asset Relief Program", "Treasury", "bailout", "capital injection"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "TARP", "keywords": ["bailout", "Treasury", "capital", "rescue"], "relevance": 3},
+          {"pattern": "Troubled Asset", "keywords": ["Relief", "program", "government"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "Treasury", "keywords": ["intervention", "bailout", "capital"], "relevance": 2},
+          {"pattern": "capital injection", "keywords": ["bank", "government", "rescue"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "government", "keywords": ["intervention", "bank"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["market solution", "private sector"]
+    },
+    {
+      "id": "Q008",
+      "query": "mortgage backed securities MBS subprime exposure",
+      "category": "financial_instruments",
+      "date_context": "2007-2008",
+      "expected_topics": ["MBS", "mortgage backed securities", "subprime", "CDO", "housing"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "mortgage backed", "keywords": ["securities", "subprime", "loss", "writedown"], "relevance": 3},
+          {"pattern": "MBS", "keywords": ["subprime", "crisis", "exposure"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "subprime", "keywords": ["mortgage", "default", "crisis"], "relevance": 2},
+          {"pattern": "CDO", "keywords": ["mortgage", "structured", "loss"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "housing", "keywords": ["market", "crisis", "decline"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["prime mortgage", "stable housing"]
+    },
+    {
+      "id": "Q009",
+      "query": "Federal Reserve emergency lending facilities",
+      "category": "policy_response",
+      "date_context": "2008",
+      "expected_topics": ["Federal Reserve", "discount window", "TAF", "PDCF", "emergency lending"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "Federal Reserve", "keywords": ["emergency", "lending", "facility", "liquidity"], "relevance": 3},
+          {"pattern": "discount window", "keywords": ["lending", "bank", "crisis"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "TAF", "keywords": ["Term Auction", "Facility", "Fed"], "relevance": 2},
+          {"pattern": "PDCF", "keywords": ["Primary Dealer", "Credit", "Facility"], "relevance": 2},
+          {"pattern": "central bank", "keywords": ["liquidity", "intervention"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "Fed", "keywords": ["intervention", "crisis"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["normal operations", "routine"]
+    },
+    {
+      "id": "Q010",
+      "query": "bank capital adequacy Basel requirements during crisis",
+      "category": "regulation",
+      "date_context": "2008",
+      "expected_topics": ["capital adequacy", "Basel", "Tier 1", "regulatory capital", "leverage ratio"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "capital adequacy", "keywords": ["Basel", "Tier 1", "ratio", "requirement"], "relevance": 3},
+          {"pattern": "Basel", "keywords": ["capital", "bank", "regulation", "requirement"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "Tier 1", "keywords": ["capital", "ratio", "bank"], "relevance": 2},
+          {"pattern": "leverage ratio", "keywords": ["bank", "capital", "requirement"], "relevance": 2},
+          {"pattern": "BIS", "keywords": ["capital", "adequacy", "regulation"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "regulatory", "keywords": ["capital", "bank"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["deregulation", "relaxed requirements"]
+    },
+    {
+      "id": "Q011",
+      "query": "VIX volatility index spike September 2008",
+      "category": "market_indicators",
+      "date_context": "September 2008",
+      "expected_topics": ["VIX", "volatility", "fear index", "market stress", "spike"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "VIX", "keywords": ["volatility", "spike", "high", "fear"], "relevance": 3},
+          {"pattern": "volatility", "keywords": ["index", "spike", "September 2008", "market"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "market volatility", "keywords": ["stress", "crisis", "2008"], "relevance": 2},
+          {"pattern": "2008-09", "keywords": ["volatility", "market", "stress"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "market stress", "keywords": ["indicator"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["low volatility", "calm markets", "stable"]
+    },
+    {
+      "id": "Q012",
+      "query": "commercial paper market freeze short term funding",
+      "category": "market_event",
+      "date_context": "September 2008",
+      "expected_topics": ["commercial paper", "short term funding", "money market", "freeze", "ABCP"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "commercial paper", "keywords": ["freeze", "market", "crisis", "funding"], "relevance": 3},
+          {"pattern": "short term funding", "keywords": ["freeze", "crisis", "market"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "ABCP", "keywords": ["asset backed", "commercial paper", "crisis"], "relevance": 2},
+          {"pattern": "money market", "keywords": ["funding", "stress", "freeze"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "funding market", "keywords": ["stress"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["normal issuance", "stable funding"]
+    },
+    {
+      "id": "Q013",
+      "query": "Goldman Sachs Morgan Stanley bank holding company conversion",
+      "category": "crisis_event",
+      "date_context": "September 2008",
+      "expected_topics": ["Goldman Sachs", "Morgan Stanley", "bank holding company", "conversion", "investment bank"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "Goldman Sachs", "keywords": ["bank holding", "conversion", "Morgan Stanley"], "relevance": 3},
+          {"pattern": "Morgan Stanley", "keywords": ["bank holding", "conversion", "Goldman"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "investment bank", "keywords": ["conversion", "bank holding", "2008"], "relevance": 2},
+          {"pattern": "2008-09", "keywords": ["Goldman", "Morgan", "bank"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "investment bank", "keywords": ["crisis", "survival"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["IPO", "normal operations"]
+    },
+    {
+      "id": "Q014",
+      "query": "credit rating downgrade financial institutions",
+      "category": "risk_indicators",
+      "date_context": "2008",
+      "expected_topics": ["credit rating", "downgrade", "Moody's", "S&P", "rating agency"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "credit rating", "keywords": ["downgrade", "bank", "institution", "crisis"], "relevance": 3},
+          {"pattern": "downgrade", "keywords": ["rating", "bank", "financial", "Moody"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "rating agency", "keywords": ["downgrade", "crisis", "bank"], "relevance": 2},
+          {"pattern": "S&P", "keywords": ["downgrade", "rating", "bank"], "relevance": 2},
+          {"pattern": "Moody", "keywords": ["downgrade", "rating", "bank"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "credit", "keywords": ["rating", "change"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["upgrade", "stable outlook", "positive"]
+    },
+    {
+      "id": "Q015",
+      "query": "bank run depositor panic Northern Rock",
+      "category": "crisis_event",
+      "date_context": "2007-2008",
+      "expected_topics": ["bank run", "depositor", "Northern Rock", "panic", "withdrawal"],
+      "relevant_documents": {
+        "highly_relevant": [
+          {"pattern": "Northern Rock", "keywords": ["bank run", "depositor", "panic", "failure"], "relevance": 3},
+          {"pattern": "bank run", "keywords": ["depositor", "withdrawal", "panic", "crisis"], "relevance": 3}
+        ],
+        "relevant": [
+          {"pattern": "deposit", "keywords": ["withdrawal", "run", "panic"], "relevance": 2},
+          {"pattern": "UK bank", "keywords": ["crisis", "failure", "run"], "relevance": 2}
+        ],
+        "marginally_relevant": [
+          {"pattern": "bank failure", "keywords": ["2007", "UK"], "relevance": 1}
+        ]
+      },
+      "negative_keywords": ["deposit growth", "stable deposits"]
+    }
+  ]
+}
