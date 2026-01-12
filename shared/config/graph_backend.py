@@ -1,6 +1,6 @@
 """
 Graph Backend Abstraction Layer for FE-EKG.
-Supports both AllegroGraph (RDF) and Neo4j (Property Graph).
+Uses AllegroGraph (RDF) as the primary database.
 """
 
 import os
@@ -52,93 +52,6 @@ class GraphBackend(ABC):
     def add_triples(self, triples):
         """Add multiple triples/relationships"""
         pass
-
-
-class Neo4jBackend(GraphBackend):
-    """Neo4j implementation of graph backend"""
-
-    def __init__(self):
-        self.uri = os.getenv('NEO4J_URI', 'bolt://localhost:7687')
-        self.user = os.getenv('NEO4J_USER', 'neo4j')
-        self.password = os.getenv('NEO4J_PASS', 'feekg2024')
-        self.database = os.getenv('NEO4J_DB', 'neo4j')  # Use 'neo4j' as default
-        self.driver = None
-        self.session = None
-
-    def connect(self):
-        """Connect to Neo4j"""
-        from neo4j import GraphDatabase
-
-        try:
-            self.driver = GraphDatabase.driver(
-                self.uri,
-                auth=(self.user, self.password)
-            )
-            # Verify connectivity
-            self.driver.verify_connectivity()
-            return True
-        except Exception as e:
-            raise ConnectionError(f"Failed to connect to Neo4j: {e}")
-
-    def close(self):
-        """Close Neo4j connection"""
-        if self.driver:
-            self.driver.close()
-
-    def size(self):
-        """Return total node count"""
-        with self.driver.session(database=self.database) as session:
-            result = session.run("MATCH (n) RETURN count(n) as count")
-            return result.single()['count']
-
-    def clear(self):
-        """Delete all nodes and relationships"""
-        with self.driver.session(database=self.database) as session:
-            session.run("MATCH (n) DETACH DELETE n")
-
-    def load_schema(self, schema_path):
-        """Execute Cypher schema file"""
-        with open(schema_path, 'r') as f:
-            cypher_script = f.read()
-
-        # Split by semicolon and execute each statement
-        statements = [s.strip() for s in cypher_script.split(';') if s.strip()]
-
-        with self.driver.session(database=self.database) as session:
-            for stmt in statements:
-                # Skip comments
-                if stmt.startswith('//') or not stmt:
-                    continue
-                try:
-                    session.run(stmt)
-                except Exception as e:
-                    # Some statements might fail if constraints already exist
-                    print(f"Warning: {e}")
-
-    def execute_query(self, query, params=None):
-        """Execute Cypher query"""
-        with self.driver.session(database=self.database) as session:
-            result = session.run(query, params or {})
-            return [dict(record) for record in result]
-
-    def add_triple(self, subject, predicate, obj):
-        """
-        Add a triple as a relationship in Neo4j.
-        subject and obj should be node IDs or dicts with node properties.
-        """
-        # Simplified: assume subject/obj are node IDs
-        query = f"""
-        MATCH (s {{id: $subject}})
-        MATCH (o {{id: $obj}})
-        MERGE (s)-[:{predicate}]->(o)
-        """
-        with self.driver.session(database=self.database) as session:
-            session.run(query, {'subject': subject, 'obj': obj})
-
-    def add_triples(self, triples):
-        """Add multiple triples"""
-        for subj, pred, obj in triples:
-            self.add_triple(subj, pred, obj)
 
 
 class AllegroGraphBackend(GraphBackend):
@@ -235,16 +148,9 @@ def get_backend():
     Factory function to get the configured backend.
 
     Returns:
-        GraphBackend: Configured backend instance (Neo4j or AllegroGraph)
+        GraphBackend: AllegroGraph backend instance
     """
-    backend_type = os.getenv('GRAPH_BACKEND', 'neo4j').lower()
-
-    if backend_type == 'neo4j':
-        return Neo4jBackend()
-    elif backend_type == 'allegrograph' or backend_type == 'ag':
-        return AllegroGraphBackend()
-    else:
-        raise ValueError(f"Unknown backend: {backend_type}. Use 'neo4j' or 'allegrograph'")
+    return AllegroGraphBackend()
 
 
 def get_connection():
@@ -265,7 +171,6 @@ def get_connection():
 
 
 if __name__ == "__main__":
-    # Test backend selection
-    print(f"Selected backend: {os.getenv('GRAPH_BACKEND', 'neo4j')}")
+    # Test backend
     backend = get_backend()
     print(f"Backend class: {backend.__class__.__name__}")

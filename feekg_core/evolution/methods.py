@@ -10,6 +10,7 @@ Implements evolution relationship scoring between events:
 6. Emotional Consistency (sentiment)
 """
 
+import math
 import re
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple, Set
@@ -71,7 +72,6 @@ class EventEvolutionScorer:
             return 0.0
 
         # TCDI formula from paper
-        import math
         tcdi = k * math.exp(-alpha * delta_days)
 
         # Threshold: paper says < 10^-1 is not significant
