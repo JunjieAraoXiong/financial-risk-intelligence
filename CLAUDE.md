@@ -139,11 +139,12 @@ open http://localhost:5000
 
 ```python
 # Query using SPARQL
+import os
 import requests
 from requests.auth import HTTPBasicAuth
 
 url = 'https://qa-agraph.nelumbium.ai/catalogs/mycatalog/repositories/FEEKG'
-auth = HTTPBasicAuth('sadmin', '279H-Dt<>,YU')
+auth = HTTPBasicAuth(os.environ['AG_USER'], os.environ['AG_PASS'])
 
 query = '''
 PREFIX feekg: <http://feekg.org/ontology#>
@@ -328,8 +329,8 @@ GRAPH_BACKEND=allegrograph
 
 # AllegroGraph Connection Details (Primary Database)
 AG_URL=https://qa-agraph.nelumbium.ai/
-AG_USER=sadmin
-AG_PASS=279H-Dt<>,YU
+AG_USER=<your-username>
+AG_PASS=<your-password>
 AG_CATALOG=mycatalog
 AG_REPO=FEEKG
 
@@ -337,7 +338,7 @@ AG_REPO=FEEKG
 # Neo4j has been retired in favor of AllegroGraph
 # NEO4J_URI=bolt://localhost:7687
 # NEO4J_USER=neo4j
-# NEO4J_PASS=feekg2024
+# NEO4J_PASS=<unused>
 # NEO4J_DB=neo4j
 ```
 
@@ -349,7 +350,7 @@ AG_REPO=FEEKG
 ./venv/bin/python scripts/check_feekg_mycatalog.py
 
 # Or manual test with curl
-curl -u sadmin:PASSWORD \
+curl -u "$AG_USER:$AG_PASS" \
   "https://qa-agraph.nelumbium.ai/catalogs/mycatalog/repositories/FEEKG/size"
 ```
 

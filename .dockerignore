@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+**/__pycache__
+**/*.pyc
+data/
+results/
+rag/data/
+demos/
+docs/
+assets/
+tests/
+venv/
+.venv/

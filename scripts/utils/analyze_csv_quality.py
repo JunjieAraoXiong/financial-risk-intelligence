@@ -19,9 +19,9 @@ from collections import Counter
 from datetime import datetime
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from ingestion.process_capital_iq_v2 import CapitalIQProcessorV2
+from feekg_core.ingestion.process_capital_iq_v2 import CapitalIQProcessorV2
 
 
 def analyze_raw_csv(csv_file):

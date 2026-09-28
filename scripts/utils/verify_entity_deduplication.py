@@ -16,8 +16,8 @@ import sys
 from collections import defaultdict
 from typing import Dict, List
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config.entity_aliases import get_canonical_name, ENTITY_ALIASES
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from shared.config.entity_aliases import get_canonical_name, ENTITY_ALIASES
 
 
 def load_json(filepath: str) -> Dict:

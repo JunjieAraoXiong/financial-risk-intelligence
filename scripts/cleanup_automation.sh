@@ -50,7 +50,7 @@ Use HTTPS connection on port 443:
 
 ```python
 AG_URL=https://qa-agraph.nelumbium.ai:443/
-AG_USER=sadmin
+AG_USER=<your-username>
 AG_PASS=your_password
 AG_REPO=feekg_dev
 ```

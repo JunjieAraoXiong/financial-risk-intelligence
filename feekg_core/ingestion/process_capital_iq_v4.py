@@ -22,8 +22,8 @@ from datetime import datetime
 from typing import List, Dict, Set, Optional, Tuple
 from collections import defaultdict
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ingestion.process_capital_iq_v3 import CapitalIQProcessorV3
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from feekg_core.ingestion.process_capital_iq_v3 import CapitalIQProcessorV3
 from shared.config.entity_aliases import get_canonical_name, get_all_aliases
 
 

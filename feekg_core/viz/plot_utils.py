@@ -13,9 +13,9 @@ import numpy as np
 from datetime import datetime
 import pandas as pd
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from query.risk_analyzer import RiskAnalyzer
+from feekg_core.query.risk_analyzer import RiskAnalyzer
 
 
 def plot_risk_timeline(entity_name: str = 'China Evergrande Group',

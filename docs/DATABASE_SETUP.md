@@ -13,7 +13,7 @@ from franz.openrdf.connect import ag_connect
 
 conn = ag_connect(
     'FEEKG',
-    user='sadmin',
+    user=os.environ['AG_USER'],
     host='https://qa-agraph.nelumbium.ai:443',
     password='your_password'
 )
@@ -26,7 +26,7 @@ conn.close()
 ```bash
 # .env
 AG_URL=https://qa-agraph.nelumbium.ai:443/
-AG_USER=sadmin
+AG_USER=<your-username>
 AG_PASS=<password>
 AG_CATALOG=mycatalog
 AG_REPO=FEEKG
@@ -112,7 +112,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 url = 'https://qa-agraph.nelumbium.ai/catalogs/mycatalog/repositories/FEEKG'
-auth = HTTPBasicAuth('sadmin', 'password')
+auth = HTTPBasicAuth(os.environ['AG_USER'], os.environ['AG_PASS'])
 
 query = '''
 PREFIX feekg: <http://feekg.org/ontology#>

@@ -32,10 +32,10 @@ from datetime import datetime
 from typing import List, Dict, Tuple
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from dotenv import load_dotenv
-from evolution.methods import compute_all_evolution_links
+from feekg_core.evolution.methods import compute_all_evolution_links
 
 load_dotenv()
 
@@ -45,7 +45,7 @@ class AllegroGraphRDFLoader:
 
     def __init__(self):
         self.base_url = os.getenv('AG_URL', 'https://qa-agraph.nelumbium.ai/').rstrip('/')
-        self.user = os.getenv('AG_USER', 'sadmin')
+        self.user = os.getenv('AG_USER')
         self.password = os.getenv('AG_PASS')
         self.catalog = os.getenv('AG_CATALOG', 'mycatalog')
         self.repo = os.getenv('AG_REPO', 'FEEKG')

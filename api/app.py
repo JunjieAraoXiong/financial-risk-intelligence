@@ -1,881 +1,390 @@
 """
 FE-EKG REST API Application
 
-Flask REST API for serving knowledge graph data and visualizations
+Flask REST API serving the AllegroGraph-backed FE-EKG knowledge graph.
+
+Run in development:   python -m api.app
+Run in production:    gunicorn -c gunicorn.conf.py api.wsgi:app
 """
 
-import sys
+from __future__ import annotations
+
+import logging
 import os
-from flask import Flask, jsonify, request, send_file
+import sys
+import time
+import uuid
+from typing import Callable, Optional
+
+if __package__ in (None, ""):  # executed as a script: python api/app.py
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from flask import Flask, g, jsonify, request
 from flask_cors import CORS
-import io
-import base64
-import matplotlib
-matplotlib.use('Agg')  # Non-interactive backend
-import matplotlib.pyplot as plt
+from werkzeug.exceptions import HTTPException
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from feekg_core.query.optimized_graph_queries import GraphQueryError, OptimizedGraphBackend
+from feekg_core.query.sparql import InvalidQueryParameter, iso_date
+from shared.config.settings import Settings, get_settings
 
-from feekg_core.query.risk_analyzer import RiskAnalyzer
-from feekg_core.query.optimized_graph_queries import OptimizedGraphBackend
-from feekg_core.viz.graph_viz import ThreeLayerVisualizer
-from feekg_core.viz.plot_utils import (plot_risk_timeline, plot_evolution_heatmap,
-                            plot_event_network, plot_component_breakdown,
-                            plot_risk_distribution)
+API_VERSION = "2.1.0"
+EARLIEST_DATE = "0001-01-01"
+
+logger = logging.getLogger("feekg.api")
 
 
-def create_app():
-    """Create and configure the Flask application"""
+class BadRequest(ValueError):
+    """Invalid client input (rendered as HTTP 400)."""
+
+
+def configure_logging(level: str) -> None:
+    root = logging.getLogger()
+    if not root.handlers:
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        )
+    root.setLevel(level)
+
+
+def _arg(name: str, cast: Callable, default, minimum=None, maximum=None):
+    """Read a query parameter, cast it and enforce bounds (HTTP 400 on failure)."""
+    raw = request.args.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = cast(raw)
+    except (TypeError, ValueError):
+        raise BadRequest(f"Query parameter '{name}' must be of type {cast.__name__}") from None
+    if cast is float and value != value:  # NaN
+        raise BadRequest(f"Query parameter '{name}' must be a number")
+    if minimum is not None and value < minimum:
+        raise BadRequest(f"Query parameter '{name}' must be >= {minimum}")
+    if maximum is not None and value > maximum:
+        raise BadRequest(f"Query parameter '{name}' must be <= {maximum}")
+    return value
+
+
+def _date_arg(name: str, required: bool = False) -> Optional[str]:
+    raw = request.args.get(name)
+    if not raw:
+        if required:
+            raise BadRequest(f"Query parameter '{name}' is required (format: YYYY-MM-DD)")
+        return None
+    try:
+        return iso_date(raw, name)
+    except InvalidQueryParameter as exc:
+        raise BadRequest(str(exc)) from None
+
+
+def _ok(**payload):
+    return jsonify({"status": "success", **payload})
+
+
+def _error(message: str, status: int, **extra):
+    body = {"status": "error", "message": message, **extra}
+    if getattr(g, "request_id", None):
+        body["request_id"] = g.request_id
+    return jsonify(body), status
+
+
+def create_app(settings: Optional[Settings] = None, backend: Optional[OptimizedGraphBackend] = None) -> Flask:
+    """Create and configure the Flask application.
+
+    ``settings`` and ``backend`` can be injected (tests); by default they are
+    built from environment variables.
+    """
+    settings = settings or get_settings()
+    configure_logging(settings.log_level)
+
     app = Flask(__name__)
-    CORS(app)  # Enable CORS for frontend access
+    app.json.sort_keys = False
+    app.config["SETTINGS"] = settings
 
-    # ==========================================================================
-    # STATIC FILE ROUTES
-    # ==========================================================================
+    # CORS: explicit allow-list from CORS_ORIGINS. Empty means same-origin only.
+    if settings.cors_origins:
+        CORS(app, origins=list(settings.cors_origins))
 
-    @app.route('/')
-    def index():
-        """Serve timeline visualization by default"""
-        return send_file('timeline.html')
+    if settings.missing_credentials() and backend is None:
+        logger.warning("AllegroGraph credentials not set (%s); data endpoints will fail",
+                       ", ".join(settings.missing_credentials()))
 
-    @app.route('/timeline.html')
-    def timeline():
-        """Serve timeline visualization"""
-        return send_file('timeline.html')
+    graph = backend or OptimizedGraphBackend(settings)
+    app.extensions["feekg_backend"] = graph
+    max_limit = settings.api_max_limit
 
-    @app.route('/demo.html')
-    def demo():
-        """Serve API demo page"""
-        return send_file('demo.html')
+    # ======================================================================
+    # REQUEST LIFECYCLE
+    # ======================================================================
 
-    @app.route('/triple_example.html')
-    def triple_example():
-        """Serve triple conversion example"""
-        return send_file('triple_example.html')
+    @app.before_request
+    def _start_request():
+        g.request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
+        g.start_time = time.perf_counter()
 
-    @app.route('/docs_hub.html')
-    def docs_hub():
-        """Serve documentation hub"""
-        import os
-        docs_path = os.path.join(os.path.dirname(__file__), '..', 'docs_hub.html')
-        return send_file(docs_path)
+    @app.after_request
+    def _finish_request(response):
+        response.headers["X-Request-ID"] = g.get("request_id", "")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault("Cache-Control", "no-store")
+        elapsed_ms = (time.perf_counter() - g.get("start_time", time.perf_counter())) * 1000
+        logger.info("%s %s %s %.1fms request_id=%s", request.method, request.path,
+                    response.status_code, elapsed_ms, g.get("request_id"))
+        return response
 
-    @app.route('/<path:filepath>')
-    def serve_markdown(filepath):
-        """Serve markdown files and other static files from project root"""
-        import os
-        # Only serve .md files and specific directories
-        if filepath.endswith('.md') or filepath.startswith('docs/') or filepath.startswith('logs/') or filepath.startswith('api/') or filepath.startswith('data/') or filepath.startswith('evolution/'):
-            file_path = os.path.join(os.path.dirname(__file__), '..', filepath)
-            if os.path.exists(file_path) and os.path.isfile(file_path):
-                return send_file(file_path)
-        return jsonify({'error': 'File not found'}), 404
+    # ======================================================================
+    # ERROR HANDLERS
+    # ======================================================================
 
-    # ==========================================================================
-    # HEALTH & INFO ENDPOINTS
-    # ==========================================================================
+    @app.errorhandler(BadRequest)
+    @app.errorhandler(InvalidQueryParameter)
+    def _bad_request(exc):
+        return _error(str(exc), 400)
 
-    @app.route('/health', methods=['GET'])
+    @app.errorhandler(GraphQueryError)
+    def _graph_unavailable(exc):
+        logger.error("Graph backend error: %s request_id=%s", exc, g.get("request_id"))
+        return _error("Graph database unavailable", 503)
+
+    @app.errorhandler(HTTPException)
+    def _http_error(exc):
+        return _error(exc.description or exc.name, exc.code or 500)
+
+    @app.errorhandler(Exception)
+    def _unhandled(exc):
+        logger.exception("Unhandled error request_id=%s", g.get("request_id"))
+        return _error("Internal server error", 500)
+
+    # ======================================================================
+    # HEALTH & INFO
+    # ======================================================================
+
+    @app.route("/health", methods=["GET"])
     def health():
-        """Health check endpoint"""
-        return jsonify({
-            'status': 'healthy',
-            'service': 'FE-EKG API',
-            'version': '1.0.0'
+        """Liveness probe: the process is up. Does not touch the database."""
+        return jsonify({"status": "healthy", "service": "FE-EKG API", "version": API_VERSION})
+
+    @app.route("/ready", methods=["GET"])
+    def ready():
+        """Readiness probe: the graph database is reachable."""
+        try:
+            graph.ping()
+        except GraphQueryError:
+            return jsonify({"status": "unavailable", "database": "unreachable"}), 503
+        return jsonify({"status": "ready", "database": "reachable"})
+
+    @app.route("/api/info", methods=["GET"])
+    def info():
+        """Dataset overview: totals, date range and event-type distribution."""
+        stats = graph.get_graph_stats_cached()
+        return _ok(data={
+            "api_version": API_VERSION,
+            "database": {"type": "allegrograph", "repository": settings.ag_repo},
+            **{k: v for k, v in stats.items() if k != "timestamp"},
         })
 
-    @app.route('/api/info', methods=['GET'])
-    def info():
-        """Get database information"""
-        try:
-            analyzer = RiskAnalyzer()
-            overview = analyzer.get_database_overview()
-            analyzer.close()
-
-            return jsonify({
-                'status': 'success',
-                'data': overview
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/stats', methods=['GET'])
+    @app.route("/api/stats", methods=["GET"])
     def get_stats():
-        """Get accurate graph statistics from AllegroGraph"""
-        try:
-            backend = OptimizedGraphBackend()
-            stats = backend.get_graph_stats()
+        return _ok(data=graph.get_graph_stats())
 
-            return jsonify({
-                'status': 'success',
-                'data': stats
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
+    # ======================================================================
+    # ENTITIES
+    # ======================================================================
 
-    # ==========================================================================
-    # ENTITY ENDPOINTS
-    # ==========================================================================
-
-    @app.route('/api/entities', methods=['GET'])
+    @app.route("/api/entities", methods=["GET"])
     def get_entities():
-        """Get all entities (using SPARQL)"""
-        try:
-            backend = OptimizedGraphBackend()
-            entities = backend.get_all_entities()
+        entities = graph.get_all_entities()
+        return _ok(count=len(entities), data=entities)
 
-            return jsonify({
-                'status': 'success',
-                'count': len(entities),
-                'data': entities
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/entities/<entity_id>', methods=['GET'])
+    @app.route("/api/entities/<entity_id>", methods=["GET"])
     def get_entity(entity_id):
-        """Get specific entity details (using SPARQL)"""
-        try:
-            backend = OptimizedGraphBackend()
-            entity = backend.get_entity_by_id(entity_id)
+        entity = graph.get_entity_by_id(entity_id)
+        if not entity:
+            return _error("Entity not found", 404)
+        return _ok(data=entity)
 
-            if not entity:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'Entity not found'
-                }), 404
+    # ======================================================================
+    # EVENTS
+    # ======================================================================
 
-            return jsonify({
-                'status': 'success',
-                'data': entity
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/entities/<entity_id>/risks', methods=['GET'])
-    def get_entity_risks(entity_id):
-        """Get risks for a specific entity"""
-        try:
-            analyzer = RiskAnalyzer()
-            query = """
-            MATCH (e:Entity {entityId: $entityId})
-            MATCH (r:Risk)-[:TARGETS_ENTITY]->(e)
-            MATCH (r)-[:HAS_RISK_TYPE]->(rt:RiskType)
-            RETURN r.riskId as id, rt.label as type, r.score as score,
-                   r.severity as severity, r.status as status
-            ORDER BY r.score DESC
-            """
-            risks = analyzer.backend.execute_query(query, {'entityId': entity_id})
-            analyzer.close()
-
-            return jsonify({
-                'status': 'success',
-                'count': len(risks),
-                'data': risks
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    # ==========================================================================
-    # EVENT ENDPOINTS
-    # ==========================================================================
-
-    @app.route('/api/events', methods=['GET'])
+    @app.route("/api/events", methods=["GET"])
     def get_events():
-        """Get all events with optional filtering (using SPARQL)"""
-        try:
-            # Query parameters
-            start_date = request.args.get('start_date')
-            end_date = request.args.get('end_date')
-            offset = int(request.args.get('offset', 0))
-            limit = int(request.args.get('limit', 100))
+        start_date = _date_arg("start_date")
+        end_date = _date_arg("end_date")
+        limit = _arg("limit", int, 100, minimum=1, maximum=max_limit)
 
-            backend = OptimizedGraphBackend()
+        if start_date or end_date:
+            events = graph.get_events_by_timewindow(
+                start_date or EARLIEST_DATE,
+                end_date or "9999-12-31",
+                entity_filter=request.args.get("entity") or None,
+                limit=limit,
+            )
+            return _ok(count=len(events), data=events)
 
-            # Use time window filter if dates provided
-            if start_date and end_date:
-                events = backend.get_events_by_timewindow(start_date, end_date, limit=limit)
-                # For time window queries, return count (no pagination info)
-                return jsonify({
-                    'status': 'success',
-                    'count': len(events),
-                    'data': events
-                })
-            else:
-                # Use pagination for all events
-                result = backend.get_events_paginated(offset=offset, limit=limit)
+        offset = _arg("offset", int, 0, minimum=0)
+        result = graph.get_events_paginated(offset=offset, limit=limit)
+        return _ok(
+            data=result["events"],
+            total=result["total"],
+            offset=result["offset"],
+            limit=result["limit"],
+            has_more=result["has_more"],
+            count=len(result["events"]),
+        )
 
-                # Return complete paginated response
-                return jsonify({
-                    'status': 'success',
-                    'data': result['events'],
-                    'total': result['total'],
-                    'offset': result['offset'],
-                    'limit': result['limit'],
-                    'count': len(result['events'])
-                })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
+    @app.route("/api/events/high-impact", methods=["GET"])
+    def get_high_impact_events():
+        min_degree = _arg("min_degree", int, 5, minimum=0)
+        limit = _arg("limit", int, 100, minimum=1, maximum=max_limit)
+        events = graph.get_high_impact_events(min_degree=min_degree, limit=limit)
+        return _ok(count=len(events), data=events)
 
-    @app.route('/api/events/<event_id>', methods=['GET'])
+    @app.route("/api/events/<event_id>", methods=["GET"])
     def get_event(event_id):
-        """Get specific event details (using SPARQL)"""
-        try:
-            backend = OptimizedGraphBackend()
-            event = backend.get_event_by_id(event_id)
+        event = graph.get_event_by_id(event_id)
+        if not event:
+            return _error("Event not found", 404)
+        return _ok(data=event)
 
-            if not event:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'Event not found'
-                }), 404
+    @app.route("/api/events/<event_id>/neighborhood", methods=["GET"])
+    def get_event_neighborhood(event_id):
+        min_score = _arg("min_score", float, 0.3, minimum=0.0, maximum=1.0)
+        return _ok(data=graph.get_event_neighborhood(event_id, max_hops=1, min_score=min_score))
 
-            return jsonify({
-                'status': 'success',
-                'data': event
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
+    # ======================================================================
+    # EVOLUTION
+    # ======================================================================
 
-    # ==========================================================================
-    # EVOLUTION ENDPOINTS
-    # ==========================================================================
-
-    @app.route('/api/evolution/links', methods=['GET'])
+    @app.route("/api/evolution/links", methods=["GET"])
     def get_evolution_links():
-        """Get evolution links with optional filtering"""
-        try:
-            min_score = float(request.args.get('min_score', 0.0))
-            limit = int(request.args.get('limit', 1000))
-            event_id = request.args.get('event_id')  # Optional filter by event
+        min_score = _arg("min_score", float, 0.0, minimum=0.0, maximum=1.0)
+        limit = _arg("limit", int, 1000, minimum=1, maximum=max_limit)
+        event_id = request.args.get("event_id") or None
+        links = graph.get_evolution_links(limit=limit, min_score=min_score, event_id=event_id)
+        return _ok(count=len(links), data=links)
 
-            backend = OptimizedGraphBackend()
-            all_links = backend.get_evolution_links(limit=limit, min_score=min_score)
-
-            # Filter by event_id if provided
-            if event_id:
-                links = [link for link in all_links if link['from'] == event_id or link['to'] == event_id]
-            else:
-                links = all_links
-
-            return jsonify({
-                'status': 'success',
-                'count': len(links),
-                'data': links
-            })
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/evolution/chains', methods=['GET'])
-    def get_causal_chains():
-        """Get causal event chains"""
-        try:
-            min_causality = float(request.args.get('min_causality', 0.5))
-            min_length = int(request.args.get('min_length', 2))
-            max_length = int(request.args.get('max_length', 5))
-
-            analyzer = RiskAnalyzer()
-            chains = analyzer.get_causal_chains(
-                min_causality=min_causality,
-                min_length=min_length,
-                max_length=max_length
-            )
-            analyzer.close()
-
-            return jsonify({
-                'status': 'success',
-                'count': len(chains),
-                'data': chains
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/evolution/stats', methods=['GET'])
+    @app.route("/api/evolution/stats", methods=["GET"])
     def get_evolution_stats():
-        """Get evolution statistics"""
-        try:
-            analyzer = RiskAnalyzer()
-            stats = analyzer.get_evolution_statistics()
-            analyzer.close()
+        return _ok(data=graph.get_evolution_statistics())
 
-            return jsonify({
-                'status': 'success',
-                'data': stats
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
+    # ======================================================================
+    # GRAPH DATA (for D3.js / Cytoscape.js / vis.js frontends)
+    # ======================================================================
 
-    # ==========================================================================
-    # RISK ENDPOINTS
-    # ==========================================================================
-
-    @app.route('/api/risks', methods=['GET'])
-    def get_risks():
-        """Get all risks"""
-        try:
-            analyzer = RiskAnalyzer()
-            query = """
-            MATCH (r:Risk)-[:HAS_RISK_TYPE]->(rt:RiskType)
-            MATCH (r)-[:TARGETS_ENTITY]->(e:Entity)
-            RETURN r.riskId as id, rt.label as type, r.score as score,
-                   r.severity as severity, r.status as status,
-                   e.name as targetEntity
-            ORDER BY r.score DESC
-            """
-            risks = analyzer.backend.execute_query(query)
-            analyzer.close()
-
-            return jsonify({
-                'status': 'success',
-                'count': len(risks),
-                'data': risks
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/risks/systemic', methods=['GET'])
-    def get_systemic_risks():
-        """Get systemic/contagion risks"""
-        try:
-            analyzer = RiskAnalyzer()
-            systemic = analyzer.detect_systemic_risk()
-            analyzer.close()
-
-            return jsonify({
-                'status': 'success',
-                'count': len(systemic),
-                'data': systemic
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/risks/distribution', methods=['GET'])
-    def get_risk_distribution():
-        """Get risk distribution statistics"""
-        try:
-            analyzer = RiskAnalyzer()
-            distribution = analyzer.get_risk_distribution()
-            analyzer.close()
-
-            return jsonify({
-                'status': 'success',
-                'data': distribution
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    # ==========================================================================
-    # VISUALIZATION ENDPOINTS
-    # ==========================================================================
-
-    @app.route('/api/visualizations/three-layer', methods=['GET'])
-    def get_three_layer_viz():
-        """Generate three-layer graph visualization"""
-        try:
-            limit_events = int(request.args.get('limit', 15))
-
-            viz = ThreeLayerVisualizer()
-            fig = viz.create_three_layer_graph(limit_events=limit_events)
-            viz.close()
-
-            # Convert to base64
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-            buf.seek(0)
-            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-
-            return jsonify({
-                'status': 'success',
-                'image': f'data:image/png;base64,{img_base64}'
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/visualizations/evolution-network', methods=['GET'])
-    def get_evolution_network():
-        """Generate evolution network visualization"""
-        try:
-            min_score = float(request.args.get('min_score', 0.4))
-
-            viz = ThreeLayerVisualizer()
-            fig = viz.create_evolution_network(min_score=min_score)
-            viz.close()
-
-            if fig is None:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'No evolution links found'
-                }), 404
-
-            # Convert to base64
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-            buf.seek(0)
-            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-
-            return jsonify({
-                'status': 'success',
-                'image': f'data:image/png;base64,{img_base64}'
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/visualizations/risk-propagation', methods=['GET'])
-    def get_risk_propagation():
-        """Generate risk propagation visualization"""
-        try:
-            viz = ThreeLayerVisualizer()
-            fig = viz.create_risk_propagation_view()
-            viz.close()
-
-            if fig is None:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'No risk data found'
-                }), 404
-
-            # Convert to base64
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-            buf.seek(0)
-            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-
-            return jsonify({
-                'status': 'success',
-                'image': f'data:image/png;base64,{img_base64}'
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/visualizations/risk-timeline', methods=['GET'])
-    def get_risk_timeline():
-        """Generate risk timeline plot"""
-        try:
-            entity_name = request.args.get('entity', 'China Evergrande Group')
-
-            fig = plot_risk_timeline(entity_name=entity_name)
-
-            if fig is None:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'No timeline data found'
-                }), 404
-
-            # Convert to base64
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-            buf.seek(0)
-            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-
-            return jsonify({
-                'status': 'success',
-                'image': f'data:image/png;base64,{img_base64}'
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/visualizations/evolution-heatmap', methods=['GET'])
-    def get_evolution_heatmap():
-        """Generate evolution heatmap"""
-        try:
-            fig = plot_evolution_heatmap()
-
-            if fig is None:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'No evolution data found'
-                }), 404
-
-            # Convert to base64
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-            buf.seek(0)
-            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-
-            return jsonify({
-                'status': 'success',
-                'image': f'data:image/png;base64,{img_base64}'
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/visualizations/component-breakdown', methods=['GET'])
-    def get_component_breakdown():
-        """Generate component breakdown plot"""
-        try:
-            fig = plot_component_breakdown()
-
-            if fig is None:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'No statistics found'
-                }), 404
-
-            # Convert to base64
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-            buf.seek(0)
-            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-
-            return jsonify({
-                'status': 'success',
-                'image': f'data:image/png;base64,{img_base64}'
-            })
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    # ==========================================================================
-    # GRAPH DATA ENDPOINTS (for D3.js/Cytoscape.js frontend)
-    # ==========================================================================
-
-    @app.route('/api/graph/data', methods=['GET'])
+    @app.route("/api/graph/data", methods=["GET"])
     def get_graph_data():
-        """Get graph data in nodes/edges format for frontend visualization"""
-        try:
-            limit_events = int(request.args.get('limit', 500))
-            min_score = float(request.args.get('min_score', 0.3))
-            start_date = request.args.get('start_date')
-            end_date = request.args.get('end_date')
+        limit_events = _arg("limit", int, 500, minimum=1, maximum=max_limit)
+        min_score = _arg("min_score", float, 0.3, minimum=0.0, maximum=1.0)
+        start_date = _date_arg("start_date")
+        end_date = _date_arg("end_date")
+        if bool(start_date) != bool(end_date):
+            raise BadRequest("start_date and end_date must be provided together")
 
-            # Use OptimizedGraphBackend for SPARQL queries (works with AllegroGraph)
-            backend = OptimizedGraphBackend()
-            data = backend.get_graph_data_for_viz(
-                limit_events=limit_events,
-                min_evolution_score=min_score,
-                start_date=start_date,
-                end_date=end_date
-            )
+        data = graph.get_graph_data_for_viz(
+            limit_events=limit_events,
+            min_evolution_score=min_score,
+            start_date=start_date,
+            end_date=end_date,
+        )
 
-            # Transform to nodes/edges format
-            nodes = []
-            edges = []
+        nodes = [
+            {"id": e["id"], "label": e["name"], "type": "entity", "group": "entity", "data": e}
+            for e in data["nodes"]["entities"]
+        ] + [
+            {"id": e["eventId"], "label": e["label"], "type": e["type"], "group": "event", "data": e}
+            for e in data["nodes"]["events"]
+        ]
+        edges = [
+            {"id": f"{link['from']}-{link['to']}", "source": link["from"], "target": link["to"],
+             "type": "evolves_to", "weight": link["score"], "data": link}
+            for link in data["edges"]["evolution"]
+        ] + [
+            {"id": f"{r['event']}-{r['entity']}", "source": r["event"], "target": r["entity"],
+             "type": r["type"], "data": r}
+            for r in data["edges"]["event_entity"]
+        ]
+        return _ok(nodes=nodes, edges=edges, stats=data["stats"])
 
-            # Add entity nodes
-            for entity in data['nodes']['entities']:
-                nodes.append({
-                    'id': entity['id'],
-                    'label': entity['name'],
-                    'type': 'entity',
-                    'group': 'entity',
-                    'data': entity
-                })
-
-            # Add event nodes
-            for event in data['nodes']['events']:
-                nodes.append({
-                    'id': event['eventId'],
-                    'label': event['label'],
-                    'type': event['type'],
-                    'group': 'event',
-                    'data': event
-                })
-
-            # Add evolution edges (event → event)
-            for edge in data['edges']['evolution']:
-                edges.append({
-                    'id': f"{edge['from']}-{edge['to']}",
-                    'source': edge['from'],
-                    'target': edge['to'],
-                    'type': 'evolves_to',
-                    'weight': edge['score'],
-                    'data': edge
-                })
-
-            # Add event-entity edges
-            for edge in data['edges']['event_entity']:
-                edges.append({
-                    'id': f"{edge['event']}-{edge['entity']}",
-                    'source': edge['event'],
-                    'target': edge['entity'],
-                    'type': edge['type'],
-                    'data': edge
-                })
-
-            return jsonify({
-                'status': 'success',
-                'nodes': nodes,
-                'edges': edges,
-                'stats': data['stats']
-            })
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/graph/timeline', methods=['GET'])
+    @app.route("/api/graph/timeline", methods=["GET"])
     def get_timeline_graph():
-        """Get time-filtered graph data for timeline visualization"""
-        try:
-            end_date = request.args.get('end_date')  # Filter up to this date
-            min_score = float(request.args.get('min_score', 0.3))
+        """Graph of all events up to ``end_date`` (vis.js node/edge format)."""
+        end_date = _date_arg("end_date", required=True)
+        start_date = _date_arg("start_date") or EARLIEST_DATE
+        min_score = _arg("min_score", float, 0.3, minimum=0.0, maximum=1.0)
+        limit_events = _arg("limit", int, 1000, minimum=1, maximum=max_limit)
 
-            if not end_date:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'end_date parameter required (format: YYYY-MM-DD)'
-                }), 400
+        data = graph.get_graph_data_for_viz(
+            limit_events=limit_events,
+            min_evolution_score=min_score,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        entities = data["nodes"]["entities"]
+        events = data["nodes"]["events"]
+        links = data["edges"]["evolution"]
 
-            analyzer = RiskAnalyzer()
+        nodes = [
+            {"id": e["id"], "label": e["name"], "type": "entity", "group": "entity",
+             "title": f"{e['name']}<br>{e['type']}", "data": e}
+            for e in entities
+        ] + [
+            {"id": e["eventId"], "label": e["type"], "type": "event", "group": "event",
+             "title": f"{e['type']}<br>{e['date']}<br>{e['label'][:50]}", "data": e}
+            for e in events
+        ]
+        edges = [
+            {"from": r["event"], "to": r["entity"], "type": "involves", "arrows": "to", "dashes": False,
+             "color": {"color": "#64748b", "opacity": 0.6}, "width": 1.5}
+            for r in data["edges"]["event_entity"]
+        ] + [
+            {"from": link["from"], "to": link["to"], "type": "evolves_to", "arrows": "to",
+             "width": max(1.5, link["score"] * 3),
+             "color": {"color": "#8b5cf6", "opacity": 0.7 + link["score"] * 0.3},
+             "title": f"Score: {link['score']:.3f}<br>Causality: {link['causality']:.3f}",
+             "data": link}
+            for link in links
+        ]
+        return _ok(
+            endDate=end_date,
+            nodes=nodes,
+            edges=edges,
+            stats={"entities": len(entities), "events": len(events), "risks": 0,
+                   "evolution_links": len(links)},
+        )
 
-            # Get events up to end_date
-            events_query = """
-            MATCH (e:Event)
-            WHERE e.date <= date($endDate)
-            OPTIONAL MATCH (e)-[:HAS_ACTOR]->(actor:Entity)
-            OPTIONAL MATCH (e)-[:HAS_TARGET]->(target:Entity)
-            RETURN e.eventId as id, e.type as type, toString(e.date) as date,
-                   e.description as description, e.confidence as confidence,
-                   actor.entityId as actorId, actor.name as actorName,
-                   target.entityId as targetId, target.name as targetName
-            ORDER BY e.date
-            """
-            events = analyzer.backend.execute_query(events_query, {'endDate': end_date})
+    # ======================================================================
+    # NOT YET AVAILABLE ON THE RDF BACKEND
+    # ======================================================================
+    # These endpoints were implemented with Neo4j Cypher queries. Neo4j has
+    # been retired and the AllegroGraph repository does not yet contain the
+    # Risk layer, so they answer 501 instead of failing with a 500.
 
-            # Get evolution links between events up to end_date
-            evolution_query = """
-            MATCH (e1:Event)-[r:EVOLVES_TO]->(e2:Event)
-            WHERE e1.date <= date($endDate) AND e2.date <= date($endDate)
-              AND r.score >= $minScore
-            RETURN e1.eventId as source, e2.eventId as target,
-                   r.score as score, r.temporal as temporal,
-                   r.entity_overlap as entityOverlap, r.semantic as semantic,
-                   r.topic as topic, r.causality as causality,
-                   r.emotional as emotional
-            ORDER BY r.score DESC
-            """
-            evolution_links = analyzer.backend.execute_query(
-                evolution_query,
-                {'endDate': end_date, 'minScore': min_score}
-            )
+    def _not_implemented(*_args, **_kwargs):
+        return _error(
+            "Not available: this endpoint depends on the Risk layer, which is not yet "
+            "loaded into the AllegroGraph backend",
+            501,
+        )
 
-            # Get all entities (they exist throughout the timeline)
-            entities_query = """
-            MATCH (ent:Entity)
-            RETURN ent.entityId as id, ent.name as name,
-                   ent.type as type, ent.description as description
-            ORDER BY ent.name
-            """
-            entities = analyzer.backend.execute_query(entities_query)
-
-            # Get risks associated with events up to end_date
-            risks_query = """
-            MATCH (r:Risk)-[:TARGETS_ENTITY]->(e:Entity)
-            MATCH (r)-[:HAS_RISK_TYPE]->(rt:RiskType)
-            OPTIONAL MATCH (evt:Event)-[:HAS_TARGET|HAS_ACTOR]->(e)
-            WHERE evt.date <= date($endDate)
-            WITH r, rt, e, count(DISTINCT evt) as eventCount
-            WHERE eventCount > 0
-            RETURN DISTINCT r.riskId as id, rt.label as type,
-                   r.score as score, r.severity as severity,
-                   e.entityId as targetEntityId, e.name as targetEntityName
-            ORDER BY r.score DESC
-            """
-            risks = analyzer.backend.execute_query(risks_query, {'endDate': end_date})
-
-            analyzer.close()
-
-            # Build nodes/edges structure
-            nodes = []
-            edges = []
-
-            # Add entity nodes
-            for entity in entities:
-                nodes.append({
-                    'id': entity['id'],
-                    'label': entity['name'],
-                    'type': 'entity',
-                    'group': 'entity',
-                    'title': f"{entity['name']}<br>{entity['type']}",
-                    'data': entity
-                })
-
-            # Add event nodes
-            for event in events:
-                nodes.append({
-                    'id': event['id'],
-                    'label': event['type'],
-                    'type': 'event',
-                    'group': 'event',
-                    'title': f"{event['type']}<br>{event['date']}<br>{event['description'][:50]}...",
-                    'data': event
-                })
-
-                # Add event-entity edges
-                if event.get('actorId'):
-                    edges.append({
-                        'from': event['id'],
-                        'to': event['actorId'],
-                        'type': 'has_actor',
-                        'arrows': 'to',
-                        'dashes': False,
-                        'color': {'color': '#64748b', 'opacity': 0.6},  # Slate gray
-                        'width': 1.5
-                    })
-                if event.get('targetId'):
-                    edges.append({
-                        'from': event['id'],
-                        'to': event['targetId'],
-                        'type': 'has_target',
-                        'arrows': 'to',
-                        'dashes': False,
-                        'color': {'color': '#64748b', 'opacity': 0.6},  # Slate gray
-                        'width': 1.5
-                    })
-
-            # Add risk nodes
-            for risk in risks:
-                nodes.append({
-                    'id': risk['id'],
-                    'label': risk['type'],
-                    'type': 'risk',
-                    'group': 'risk',
-                    'title': f"{risk['type']}<br>Score: {risk['score']}<br>Severity: {risk['severity']}",
-                    'data': risk
-                })
-
-                # Add risk-entity edges
-                if risk.get('targetEntityId'):
-                    edges.append({
-                        'from': risk['id'],
-                        'to': risk['targetEntityId'],
-                        'type': 'targets',
-                        'arrows': 'to',
-                        'dashes': True,
-                        'color': {'color': '#f472b6', 'opacity': 0.5},  # Pink (lighter)
-                        'width': 1.5
-                    })
-
-            # Add evolution edges
-            for link in evolution_links:
-                edges.append({
-                    'from': link['source'],
-                    'to': link['target'],
-                    'type': 'evolves_to',
-                    'arrows': 'to',
-                    'width': max(1.5, link['score'] * 3),  # Min width 1.5
-                    'color': {
-                        'color': '#8b5cf6',  # Purple (matches app theme)
-                        'opacity': 0.7 + (link['score'] * 0.3)  # Opacity based on score
-                    },
-                    'title': f"Score: {link['score']:.3f}<br>Causality: {link['causality']:.3f}",
-                    'data': link
-                })
-
-            return jsonify({
-                'status': 'success',
-                'endDate': end_date,
-                'nodes': nodes,
-                'edges': edges,
-                'stats': {
-                    'entities': len(entities),
-                    'events': len(events),
-                    'risks': len(risks),
-                    'evolution_links': len(evolution_links)
-                }
-            })
-
-        except Exception as e:
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
+    for rule in (
+        "/api/entities/<entity_id>/risks",
+        "/api/evolution/chains",
+        "/api/risks",
+        "/api/risks/systemic",
+        "/api/risks/distribution",
+        "/api/visualizations/<name>",
+    ):
+        app.add_url_rule(rule, endpoint=f"not_implemented:{rule}", view_func=_not_implemented,
+                         methods=["GET"])
 
     return app
 
 
-if __name__ == '__main__':
-    import os
-    app = create_app()
-
-    # Get port from environment variable (for Railway/Heroku) or default to 5001
-    port = int(os.environ.get('PORT', 5001))
-
-    print("\n" + "=" * 70)
-    print("FE-EKG REST API Server")
-    print("=" * 70)
-    print(f"\nStarting server on http://0.0.0.0:{port}")
-    print("\nAPI Documentation:")
-    print("  Health:       GET  /health")
-    print("  Info:         GET  /api/info")
-    print("  Entities:     GET  /api/entities")
-    print("  Events:       GET  /api/events")
-    print("  Evolution:    GET  /api/evolution/links")
-    print("  Risks:        GET  /api/risks")
-    print("  Graph Data:   GET  /api/graph/data")
-    print("  Timeline:     GET  /api/graph/timeline?end_date=YYYY-MM-DD")
-    print("  Viz (3-layer):GET  /api/visualizations/three-layer")
-    print("\nInteractive Demos:")
-    print(f"  API Demo:     http://localhost:{port}/demo.html")
-    print(f"  Timeline:     http://localhost:{port}/timeline.html")
-    print("\nPress Ctrl+C to stop")
-    print("=" * 70 + "\n")
-
-    app.run(debug=True, host='0.0.0.0', port=port)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5001))
+    debug = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
+    host = os.environ.get("HOST", "127.0.0.1")
+    create_app().run(debug=debug, host=host, port=port)

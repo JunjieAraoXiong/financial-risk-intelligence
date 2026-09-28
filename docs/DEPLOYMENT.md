@@ -39,8 +39,8 @@ In Railway dashboard, go to your project → Variables tab and add:
 ```
 GRAPH_BACKEND=allegrograph
 AG_URL=https://qa-agraph.nelumbium.ai/
-AG_USER=sadmin
-AG_PASS=279H-Dt<>,YU
+AG_USER=<your-username>
+AG_PASS=<your-password>
 AG_REPO=Event_risk
 FLASK_ENV=production
 ```
@@ -157,7 +157,7 @@ Open your Vercel URL in a browser. You should see:
 |----------|-------------|---------|
 | `GRAPH_BACKEND` | Database backend to use | `allegrograph` |
 | `AG_URL` | AllegroGraph server URL | `https://qa-agraph.nelumbium.ai/` |
-| `AG_USER` | AllegroGraph username | `sadmin` |
+| `AG_USER` | AllegroGraph username | — |
 | `AG_PASS` | AllegroGraph password | `your_password` |
 | `AG_REPO` | AllegroGraph repository | `Event_risk` |
 | `FLASK_ENV` | Flask environment | `production` |

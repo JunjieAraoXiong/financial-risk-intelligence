@@ -52,7 +52,7 @@
      
   2. Login:
      Username: neo4j
-     Password: feekg2024
+     Password: <set in .env>
 
   3. Try this query:
      MATCH (e1:Event)-[r:EVOLVES_TO]->(e2:Event)

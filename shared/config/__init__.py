@@ -2,6 +2,6 @@
 FE-EKG Configuration Module
 """
 
-from .secrets import get_ag_connection, get_masked_config, config
+from .settings import Settings, get_settings
 
-__all__ = ['get_ag_connection', 'get_masked_config', 'config']
+__all__ = ['Settings', 'get_settings']

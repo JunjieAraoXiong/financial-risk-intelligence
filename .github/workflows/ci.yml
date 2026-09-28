@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Lint (repository-wide, errors only)
+        run: ruff check .
+      - name: Lint (service code, full pyflakes)
+        run: ruff check --extend-select F,E4,E7 api shared/config/settings.py feekg_core/query/sparql.py feekg_core/query/optimized_graph_queries.py tests
+      - name: Tests
+        run: pytest --cov --cov-report=term-missing
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t feekg-api .
+      - name: Smoke test container
+        run: |
+          docker run -d --name api -p 5001:5001 feekg-api
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:5001/health && exit 0; sleep 1; done
+          docker logs api; exit 1
+
