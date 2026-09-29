@@ -25,7 +25,7 @@ jobs:
       - name: Lint (repository-wide, errors only)
         run: ruff check .
       - name: Lint (service code, full pyflakes)
-        run: ruff check --extend-select F,E4,E7 api shared/config/settings.py feekg_core/query/sparql.py feekg_core/query/optimized_graph_queries.py tests
+        run: ruff check --extend-select F,E4,E7 api shared/config/settings.py feekg_core/query/sparql.py feekg_core/query/optimized_graph_queries.py radar tests
       - name: Tests
         run: pytest --cov --cov-report=term-missing
 

@@ -1,0 +1,436 @@
+{
+  "_notes": [
+    "Draft seed ontology for the 2007-2009 backtest. VERIFY before relying on results:",
+    "- tickers are 2008 listings (several were later reused by other companies);",
+    "- acquisition dates are deal-closing dates; WaMu Bank was seized and sold to JPMorgan on 2008-09-25;",
+    "- 'exposed_to' relations are intentionally empty: add them only from sources public at the time",
+    "  (e.g. 10-K/10-Q disclosures), with valid_from set to the disclosure date, never from hindsight.",
+    "- 'Lehman Brothers Inc.' is the broker-dealer subsidiary, not an alias of the holding company."
+  ],
+  "entities": [
+    {
+      "id": "ent_lehman_brothers",
+      "name": "Lehman Brothers Holdings Inc.",
+      "aliases": [
+        "Lehman Brothers",
+        "Lehman Brothers Holdings",
+        "Lehman Brothers Holdings Inc"
+      ],
+      "ticker": "LEH",
+      "type": "investment_bank"
+    },
+    {
+      "id": "ent_bear_stearns",
+      "name": "The Bear Stearns Companies Inc.",
+      "aliases": [
+        "Bear Stearns",
+        "Bear Stearns & Co",
+        "Bear Stearns & Co.",
+        "Bear Stearns Companies Inc",
+        "Bear Stearns Companies Inc.",
+        "Bear, Stearns & Co.",
+        "The Bear Stearns Companies"
+      ],
+      "ticker": "BSC",
+      "type": "investment_bank"
+    },
+    {
+      "id": "ent_merrill_lynch",
+      "name": "Merrill Lynch & Co., Inc.",
+      "aliases": [
+        "Merrill Lynch",
+        "Merrill Lynch & Co",
+        "Merrill Lynch & Co.",
+        "Merrill Lynch Inc.",
+        "Merrill Lynch Pierce Fenner & Smith",
+        "Merrill Lynch, Pierce, Fenner & Smith"
+      ],
+      "ticker": "MER",
+      "type": "investment_bank"
+    },
+    {
+      "id": "ent_goldman_sachs",
+      "name": "The Goldman Sachs Group, Inc.",
+      "aliases": [
+        "Goldman Sachs",
+        "Goldman Sachs & Co.",
+        "Goldman Sachs Group",
+        "Goldman Sachs Group Inc",
+        "Goldman Sachs Group Inc.",
+        "Goldman, Sachs & Co.",
+        "The Goldman Sachs Group"
+      ],
+      "ticker": "GS",
+      "type": "investment_bank"
+    },
+    {
+      "id": "ent_morgan_stanley",
+      "name": "Morgan Stanley",
+      "aliases": [
+        "Morgan Stanley & Co",
+        "Morgan Stanley & Co.",
+        "Morgan Stanley & Co. Inc.",
+        "Morgan Stanley Dean Witter",
+        "Morgan Stanley Inc",
+        "Morgan Stanley Inc."
+      ],
+      "ticker": "MS",
+      "type": "investment_bank"
+    },
+    {
+      "id": "ent_aig",
+      "name": "American International Group, Inc.",
+      "aliases": [
+        "A.I.G.",
+        "AIG",
+        "AIG Inc.",
+        "American International Group",
+        "American International Group Inc",
+        "American International Group Inc."
+      ],
+      "ticker": "AIG",
+      "type": "insurance"
+    },
+    {
+      "id": "ent_jpmorgan",
+      "name": "JPMorgan Chase & Co.",
+      "aliases": [
+        "J.P. Morgan",
+        "J.P. Morgan Chase",
+        "JP Morgan",
+        "JP Morgan Chase",
+        "JPMorgan",
+        "JPMorgan Chase",
+        "JPMorgan Chase & Co",
+        "JPMorgan Chase Bank"
+      ],
+      "ticker": "JPM",
+      "type": "bank"
+    },
+    {
+      "id": "ent_bank_of_america",
+      "name": "Bank of America Corporation",
+      "aliases": [
+        "B of A",
+        "Bank of America",
+        "Bank of America Corp",
+        "Bank of America Corp.",
+        "Bank of America, N.A.",
+        "BankAmerica",
+        "BofA"
+      ],
+      "ticker": "BAC",
+      "type": "bank"
+    },
+    {
+      "id": "ent_citigroup",
+      "name": "Citigroup Inc.",
+      "aliases": [
+        "Citi",
+        "Citi Inc.",
+        "Citibank",
+        "Citibank N.A.",
+        "Citicorp",
+        "Citigroup",
+        "Citigroup Inc"
+      ],
+      "ticker": "C",
+      "type": "bank"
+    },
+    {
+      "id": "ent_wachovia",
+      "name": "Wachovia Corporation",
+      "aliases": [
+        "Wachovia",
+        "Wachovia Bank",
+        "Wachovia Corp."
+      ],
+      "ticker": "WB",
+      "type": "bank"
+    },
+    {
+      "id": "ent_washington_mutual",
+      "name": "Washington Mutual, Inc.",
+      "aliases": [
+        "WaMu",
+        "Washington Mutual",
+        "Washington Mutual Inc",
+        "Washington Mutual Inc."
+      ],
+      "ticker": "WM",
+      "type": "bank"
+    },
+    {
+      "id": "ent_wells_fargo",
+      "name": "Wells Fargo & Company",
+      "aliases": [
+        "Wells Fargo",
+        "Wells Fargo & Co",
+        "Wells Fargo & Co.",
+        "Wells Fargo Bank"
+      ],
+      "ticker": "WFC",
+      "type": "bank"
+    },
+    {
+      "id": "ent_freddie_mac",
+      "name": "Federal Home Loan Mortgage Corporation",
+      "aliases": [
+        "FHLMC",
+        "Federal Home Loan Mortgage Corp.",
+        "Freddie Mac"
+      ],
+      "ticker": "FRE",
+      "type": "gse"
+    },
+    {
+      "id": "ent_fannie_mae",
+      "name": "Federal National Mortgage Association",
+      "aliases": [
+        "FNMA",
+        "Fannie Mae",
+        "Federal National Mortgage Assn."
+      ],
+      "ticker": "FNM",
+      "type": "gse"
+    },
+    {
+      "id": "ent_deutsche_bank",
+      "name": "Deutsche Bank AG",
+      "aliases": [
+        "DB AG",
+        "Deutsche Bank",
+        "Deutsche Bank Aktiengesellschaft"
+      ],
+      "ticker": "DB",
+      "type": "bank"
+    },
+    {
+      "id": "ent_ubs",
+      "name": "UBS AG",
+      "aliases": [
+        "UBS",
+        "UBS Group AG",
+        "Union Bank of Switzerland"
+      ],
+      "ticker": "UBS",
+      "type": "bank"
+    },
+    {
+      "id": "ent_credit_suisse",
+      "name": "Credit Suisse Group AG",
+      "aliases": [
+        "CSFB",
+        "Credit Suisse",
+        "Credit Suisse AG",
+        "Credit Suisse First Boston"
+      ],
+      "ticker": "CS",
+      "type": "bank"
+    },
+    {
+      "id": "ent_barclays",
+      "name": "Barclays PLC",
+      "aliases": [
+        "Barclays",
+        "Barclays Bank",
+        "Barclays Capital",
+        "Barclays plc"
+      ],
+      "ticker": "BCS",
+      "type": "bank"
+    },
+    {
+      "id": "ent_hsbc",
+      "name": "HSBC Holdings plc",
+      "aliases": [
+        "HSBC",
+        "HSBC Bank",
+        "HSBC Holdings",
+        "Hongkong and Shanghai Banking Corporation"
+      ],
+      "ticker": "HBC",
+      "type": "bank"
+    },
+    {
+      "id": "ent_sec",
+      "name": "U.S. Securities and Exchange Commission",
+      "aliases": [
+        "SEC",
+        "Securities and Exchange Commission"
+      ],
+      "ticker": null,
+      "type": "regulator"
+    },
+    {
+      "id": "ent_fed",
+      "name": "Board of Governors of the Federal Reserve System",
+      "aliases": [
+        "Fed",
+        "Federal Reserve",
+        "Federal Reserve Bank",
+        "Federal Reserve System",
+        "The Federal Reserve",
+        "U.S. Federal Reserve"
+      ],
+      "ticker": null,
+      "type": "regulator"
+    },
+    {
+      "id": "ent_fdic",
+      "name": "Federal Deposit Insurance Corporation",
+      "aliases": [
+        "FDIC"
+      ],
+      "ticker": null,
+      "type": "regulator"
+    },
+    {
+      "id": "ent_treasury",
+      "name": "U.S. Department of the Treasury",
+      "aliases": [
+        "Department of the Treasury",
+        "Treasury",
+        "U.S. Treasury"
+      ],
+      "ticker": null,
+      "type": "regulator"
+    },
+    {
+      "id": "ent_countrywide",
+      "name": "Countrywide Financial Corporation",
+      "aliases": [
+        "Countrywide",
+        "Countrywide Financial"
+      ],
+      "ticker": "CFC",
+      "type": "mortgage_lender"
+    },
+    {
+      "id": "ent_wamu_bank",
+      "name": "Washington Mutual Bank",
+      "aliases": [
+        "WaMu Bank"
+      ],
+      "ticker": null,
+      "type": "subsidiary"
+    },
+    {
+      "id": "ent_lehman_brothers_inc",
+      "name": "Lehman Brothers Inc.",
+      "aliases": [],
+      "ticker": null,
+      "type": "subsidiary"
+    },
+    {
+      "id": "ent_lbsf",
+      "name": "Lehman Brothers Special Financing Inc.",
+      "aliases": [
+        "LBSF"
+      ],
+      "ticker": null,
+      "type": "subsidiary"
+    },
+    {
+      "id": "ent_lbie",
+      "name": "Lehman Brothers International (Europe)",
+      "aliases": [
+        "LBIE"
+      ],
+      "ticker": null,
+      "type": "subsidiary"
+    },
+    {
+      "id": "ent_aigfp",
+      "name": "AIG Financial Products Corp.",
+      "aliases": [
+        "AIG Financial Products",
+        "AIGFP"
+      ],
+      "ticker": null,
+      "type": "subsidiary"
+    }
+  ],
+  "relations": [
+    {
+      "source": "ent_lehman_brothers_inc",
+      "target": "ent_lehman_brothers",
+      "kind": "subsidiary_of",
+      "weight": 1.0,
+      "valid_from": null,
+      "valid_to": null
+    },
+    {
+      "source": "ent_lbsf",
+      "target": "ent_lehman_brothers",
+      "kind": "subsidiary_of",
+      "weight": 1.0,
+      "valid_from": null,
+      "valid_to": null
+    },
+    {
+      "source": "ent_lbie",
+      "target": "ent_lehman_brothers",
+      "kind": "subsidiary_of",
+      "weight": 1.0,
+      "valid_from": null,
+      "valid_to": null
+    },
+    {
+      "source": "ent_aigfp",
+      "target": "ent_aig",
+      "kind": "subsidiary_of",
+      "weight": 1.0,
+      "valid_from": null,
+      "valid_to": null
+    },
+    {
+      "source": "ent_bear_stearns",
+      "target": "ent_jpmorgan",
+      "kind": "subsidiary_of",
+      "weight": 1.0,
+      "valid_from": "2008-05-30",
+      "valid_to": null
+    },
+    {
+      "source": "ent_countrywide",
+      "target": "ent_bank_of_america",
+      "kind": "subsidiary_of",
+      "weight": 1.0,
+      "valid_from": "2008-07-01",
+      "valid_to": null
+    },
+    {
+      "source": "ent_wamu_bank",
+      "target": "ent_washington_mutual",
+      "kind": "subsidiary_of",
+      "weight": 1.0,
+      "valid_from": null,
+      "valid_to": "2008-09-25"
+    },
+    {
+      "source": "ent_wamu_bank",
+      "target": "ent_jpmorgan",
+      "kind": "subsidiary_of",
+      "weight": 1.0,
+      "valid_from": "2008-09-25",
+      "valid_to": null
+    },
+    {
+      "source": "ent_wachovia",
+      "target": "ent_wells_fargo",
+      "kind": "subsidiary_of",
+      "weight": 1.0,
+      "valid_from": "2008-12-31",
+      "valid_to": null
+    },
+    {
+      "source": "ent_merrill_lynch",
+      "target": "ent_bank_of_america",
+      "kind": "subsidiary_of",
+      "weight": 1.0,
+      "valid_from": "2009-01-01",
+      "valid_to": null
+    }
+  ]
+}

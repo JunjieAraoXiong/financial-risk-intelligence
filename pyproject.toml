@@ -11,7 +11,7 @@ testpaths = ["tests"]
 addopts = "-q"
 
 [tool.coverage.run]
-source = ["api", "shared/config", "feekg_core/query", "feekg_core/evolution"]
+source = ["api", "shared/config", "feekg_core/query", "feekg_core/evolution", "radar"]
 
 [tool.ruff]
 target-version = "py310"
