@@ -18,7 +18,7 @@ class FEEKGAnalyzer:
 
     def __init__(self):
         self.base_url = os.getenv('AG_URL', 'https://qa-agraph.nelumbium.ai/').rstrip('/')
-        self.user = os.getenv('AG_USER', 'sadmin')
+        self.user = os.getenv('AG_USER')
         self.password = os.getenv('AG_PASS')
         self.catalog = os.getenv('AG_CATALOG', 'mycatalog')
         self.repo = os.getenv('AG_REPO', 'FEEKG')

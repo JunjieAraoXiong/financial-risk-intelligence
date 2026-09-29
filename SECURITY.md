@@ -8,8 +8,8 @@ All sensitive credentials are stored in `.env` file:
 
 ```bash
 AG_URL=https://qa-agraph.nelumbium.ai/
-AG_USER=sadmin
-AG_PASS=279H-Dt<>,YU
+AG_USER=<your-username>
+AG_PASS=<your-password>
 AG_REPO=feekg_dev
 ```
 
@@ -20,11 +20,12 @@ AG_REPO=feekg_dev
    - Double-check before any commit
 
 2. **NEVER print credentials to console**
-   - Use `get_masked_config()` for logging
+   - Use `get_settings().masked()` for logging
    - Passwords are masked as `***`
 
 3. **NEVER include credentials in error messages**
-   - The `secrets.py` module automatically masks passwords in exceptions
+   - The SPARQL client logs only the exception class and HTTP status, never URLs with credentials
+   - API error responses are generic (`Graph database unavailable`, `Internal server error`)
 
 4. **Rotate credentials if leaked**
    - If `.env` is accidentally committed or shared
@@ -36,11 +37,10 @@ AG_REPO=feekg_dev
 ### ✅ CORRECT - Masked logging
 
 ```python
-from config.secrets import get_masked_config
+from shared.config import get_settings
 
-config = get_masked_config()
-print(f"Config: {config}")
-# Output: {'ag_user': 'sa***', 'ag_pass': '***', ...}
+print(f"Config: {get_settings().masked()}")
+# Output: {'ag_user': 'al***', 'ag_pass': '***', ...}
 ```
 
 ### ❌ INCORRECT - Exposing credentials
@@ -53,9 +53,9 @@ print(f"Password: {os.getenv('AG_PASS')}")  # DON'T DO THIS!
 ### ✅ CORRECT - Safe connection
 
 ```python
-from config.secrets import get_ag_connection
+from shared.config.graph_backend import get_connection
 
-conn = get_ag_connection()  # Credentials handled internally
+conn = get_connection()  # Credentials read from the environment
 size = conn.size()
 conn.close()
 ```
@@ -79,7 +79,7 @@ When working with credentials:
    ```bash
    git status --ignored
    ```
-3. Use `get_masked_config()` in all logs
+3. Use `get_settings().masked()` in all logs
 4. Review code for hardcoded credentials before commits
 
 ## Incident Response

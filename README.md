@@ -79,20 +79,15 @@ Knowledge Graph (FE-EKG)          RAG Pipeline
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt           # KG toolkit + API
+pip install -r requirements-research.txt  # + RAG / SLM / ABM experiments
+pip install -r requirements-dev.txt       # tests + lint
 ```
 
 ### 2. Configure
 
-Create `.env`:
-
 ```bash
-# AllegroGraph
-AG_URL=https://your-instance.com/
-AG_USER=your_user
-AG_PASS=your_password
-AG_CATALOG=mycatalog
-AG_REPO=FEEKG
+cp .env.example .env   # then set AG_URL, AG_USER, AG_PASS
 ```
 
 ### 3. Run Experiment
@@ -105,8 +100,17 @@ python run_experiment.py --liquidity-factor 0.15
 ### 4. Run API
 
 ```bash
-python api/app.py
-# Available at http://localhost:5000
+FLASK_DEBUG=1 python -m api.app               # development, http://127.0.0.1:5001
+gunicorn -c gunicorn.conf.py api.wsgi:app      # production
+docker build -t feekg-api . && docker run -p 5001:5001 --env-file .env feekg-api
+```
+
+See [api/README.md](api/README.md) for configuration and all endpoints.
+
+### 5. Test
+
+```bash
+pytest && ruff check .
 ```
 
 ## Project Structure
@@ -190,7 +194,7 @@ Based on Liu et al. (2024) "Risk identification and management through knowledge
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /health` | Health check |
+| `GET /health`, `GET /ready` | Liveness / readiness probes |
 | `GET /api/entities` | All entities (22) |
 | `GET /api/events` | All events (4,000) |
 | `GET /api/evolution/links` | Evolution relationships |

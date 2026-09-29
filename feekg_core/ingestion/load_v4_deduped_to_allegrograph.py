@@ -12,9 +12,9 @@ Usage:
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from ingestion.load_capital_iq_to_allegrograph import AllegroGraphRDFLoader, load_file_to_allegrograph
+from feekg_core.ingestion.load_capital_iq_to_allegrograph import AllegroGraphRDFLoader, load_file_to_allegrograph
 
 
 def main():

@@ -25,7 +25,7 @@ load_dotenv()
 base_url = os.getenv('AG_URL', 'https://qa-agraph.nelumbium.ai/').rstrip('/')
 catalog = os.getenv('AG_CATALOG', 'mycatalog')
 repo = os.getenv('AG_REPO', 'FEEKG')
-auth = (os.getenv('AG_USER', 'sadmin'), os.getenv('AG_PASS'))
+auth = (os.getenv('AG_USER'), os.getenv('AG_PASS'))
 
 repo_url = f"{base_url}/catalogs/{catalog}/repositories/{repo}"
 

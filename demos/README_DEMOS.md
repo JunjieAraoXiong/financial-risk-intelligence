@@ -122,8 +122,8 @@ pip install --upgrade jupyter notebook
 Check your `.env` file has correct credentials:
 ```
 AG_URL=https://qa-agraph.nelumbium.ai/
-AG_USER=sadmin
-AG_PASS=279H-Dt<>,YU
+AG_USER=<your-username>
+AG_PASS=<your-password>
 AG_CATALOG=mycatalog
 AG_REPO=FEEKG
 ```

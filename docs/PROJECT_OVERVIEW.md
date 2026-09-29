@@ -161,7 +161,7 @@ feekg/
 # .env file
 GRAPH_BACKEND=allegrograph
 AG_URL=https://qa-agraph.nelumbium.ai/
-AG_USER=sadmin
+AG_USER=<your-username>
 AG_PASS=<password>
 AG_CATALOG=mycatalog
 AG_REPO=FEEKG

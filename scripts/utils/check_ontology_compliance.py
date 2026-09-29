@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 base_url = os.getenv('AG_URL', 'https://qa-agraph.nelumbium.ai/').rstrip('/')
-user = os.getenv('AG_USER', 'sadmin')
+user = os.getenv('AG_USER')
 password = os.getenv('AG_PASS')
 catalog = os.getenv('AG_CATALOG', 'mycatalog')
 repo = os.getenv('AG_REPO', 'FEEKG')

@@ -6,8 +6,7 @@ Provides Python functions for querying and analyzing the FE-EKG graph
 
 import sys
 import os
-from typing import List, Dict, Optional, Tuple
-from datetime import datetime
+from typing import List, Dict, Optional
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 

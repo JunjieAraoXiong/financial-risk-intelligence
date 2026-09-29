@@ -3,11 +3,9 @@ Graph Backend Abstraction Layer for FE-EKG.
 Uses AllegroGraph (RDF) as the primary database.
 """
 
-import os
 from abc import ABC, abstractmethod
-from dotenv import load_dotenv
 
-load_dotenv()
+from shared.config.settings import get_settings
 
 
 class GraphBackend(ABC):
@@ -58,11 +56,12 @@ class AllegroGraphBackend(GraphBackend):
     """AllegroGraph implementation of graph backend"""
 
     def __init__(self):
-        self.url = os.getenv('AG_URL', 'https://qa-agraph.nelumbium.ai/')
-        self.user = os.getenv('AG_USER')
-        self.password = os.getenv('AG_PASS')
-        self.catalog = os.getenv('AG_CATALOG', 'mycatalog')
-        self.repo = os.getenv('AG_REPO', 'feekg_dev')
+        settings = get_settings()
+        self.url = settings.ag_url
+        self.user = settings.ag_user
+        self.password = settings.ag_pass
+        self.catalog = settings.ag_catalog
+        self.repo = settings.ag_repo
 
         # Ensure URL has explicit port 443 for HTTPS
         if ':443' not in self.url and self.url.startswith('https://'):

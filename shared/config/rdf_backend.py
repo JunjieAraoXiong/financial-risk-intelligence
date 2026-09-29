@@ -5,13 +5,13 @@ Converts FE-EKG data to RDF triples and stores in AllegroGraph.
 Can work alongside Neo4j or as standalone backend.
 """
 
-import os
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 from franz.openrdf.connect import ag_connect
 from franz.openrdf.vocabulary.rdf import RDF
 from franz.openrdf.vocabulary.xmlschema import XMLSchema
-from franz.openrdf.sail.allegrographserver import AllegroGraphServer
+
+from shared.config.settings import get_settings
 
 
 class RDFBackend:
@@ -23,10 +23,11 @@ class RDFBackend:
 
     def __init__(self):
         """Initialize AllegroGraph connection"""
-        self.ag_url = os.getenv('AG_URL', 'https://qa-agraph.nelumbium.ai/')
-        self.ag_user = os.getenv('AG_USER', 'sadmin')
-        self.ag_pass = os.getenv('AG_PASS')
-        self.ag_repo = os.getenv('AG_REPO', 'feekg_dev')
+        settings = get_settings()
+        self.ag_url = settings.ag_url
+        self.ag_user = settings.ag_user
+        self.ag_pass = settings.ag_pass
+        self.ag_repo = settings.ag_repo
 
         # Ensure URL has explicit port 443 for HTTPS
         if ':443' not in self.ag_url and self.ag_url.startswith('https://'):
